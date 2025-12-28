@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {Schedule} from "../../../../static/ts/c3voc.ts"
+import {Room, Schedule} from "../../../../static/ts/c3voc.ts"
 import {ProcessedEvent} from "../ts/schedule_types.ts";
 import {computed, ComputedRef, onMounted, ref} from "vue"
   import moment from 'moment'
