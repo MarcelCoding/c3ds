@@ -353,6 +353,10 @@ class ScheduleView(BaseView):
     schedule = models.ForeignKey(Schedule, on_delete=models.PROTECT, verbose_name=_('Schedule'))
     room_filter = models.CharField(max_length=256, verbose_name=_('Room Filter'), blank=True, null=True,
                                         help_text=_('Room filter for schedule as semicolon-separated list'))
+    guid_filter = models.CharField(max_length=256, verbose_name=_('GUID Filter'), blank=True, null=True,
+                                   help_text=_('GUID Room filter for schedule as semicolon-separated list'))
+    duration_limit = models.PositiveIntegerField(verbose_name=_('Duration Limit'), blank=True, null=True,
+                                                 help_text=_('Filter schedule entries longer than x minutes'))
 
     class Meta:
         verbose_name = _('Schedule View')

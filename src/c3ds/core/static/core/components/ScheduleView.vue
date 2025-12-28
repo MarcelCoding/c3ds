@@ -15,8 +15,12 @@ import {getCurrentTime} from "../ts/ntp.ts";
   const props = withDefaults(defineProps<{
     initialSchedule?: Schedule
     room_filter?: string[]
+    guid_filter?: string[]
+    duration_limit?: number
   }>(), {
-    room_filter: () => []
+    room_filter: () => [],
+    guid_filter: () => [],
+    duration_limit: undefined
   })
 
   const schedule = ref(props.initialSchedule)
@@ -38,6 +42,27 @@ import {getCurrentTime} from "../ts/ntp.ts";
   //   return rooms
   // })
 
+  const guid_rooms: ComputedRef<{[k: string]: Room}> = computed(() => {
+    const guid_rooms: {[k: string]: Room} = {}
+    for (let room of schedule.value?.conference.rooms || []) {
+      if (room.guid) guid_rooms[room.guid] = room
+    }
+    return guid_rooms
+  })
+
+  const room_filter_combined: ComputedRef<string[]> = computed(() => {
+    let guid_room_names: string[] = []
+    if (props.guid_filter.length > 0) {
+      for (let room_guid of props.guid_filter) {
+        guid_room_names.push(guid_rooms.value[room_guid].name)
+      }
+    }
+    if (props.room_filter.length > 0) {
+      return guid_room_names.concat(props.room_filter)
+    }
+    return guid_room_names
+  })
+
   const next_talks: ComputedRef<ProcessedEvent[]> = computed(() => {
     let max_talks = Math.floor(window.innerHeight / 96)
     if (schedule?.value === undefined) {
@@ -49,12 +74,13 @@ import {getCurrentTime} from "../ts/ntp.ts";
       roomsLoop: for (let room in day.rooms) {
         for (let event of day.rooms[room]) {
           const talk = event as ProcessedEvent
-          if (props.room_filter.length > 0 && !props.room_filter.includes(talk.room)) {
+          if (room_filter_combined.value.length > 0 && !room_filter_combined.value.includes(talk.room)) {
             continue
           }
           talk.date_start = moment(event.date)
           talk.date_end = talk.date_start.clone()
           talk.moment_duration = moment.duration(talk.duration)
+          if (props.duration_limit && talk.moment_duration.asMinutes() > props.duration_limit) continue
           talk.date_end.add(talk.moment_duration)
           if (talk.date_end.isBefore(now.value)) continue
           talk.color = talk.track ? tracks.value[talk.track]?.color || '' : ''

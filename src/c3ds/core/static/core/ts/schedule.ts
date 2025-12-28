@@ -12,11 +12,17 @@ if (scheduleContainer !== null) {
   let room_filter: string[] = (scheduleContainer.dataset['roomFilter'] || '')
     .split(';')
     .filter((value) => {return value !== ''})
+  let guid_filter: string[] = (scheduleContainer.dataset['guidFilter'] || '')
+    .split(';')
+    .filter((value) => {return value !== ''})
+  let duration_limit: number | undefined = 240
   let schedule_url: string = (scheduleContainer.dataset['scheduleUrl'] || '')
   let current_schedule: Schedule|null = null
   const scheduleView: ComponentPublicInstance<typeof ScheduleView> = createApp(ScheduleView, {
     // initialSchedule: schedule.schedule
-    room_filter
+    room_filter,
+    guid_filter,
+    duration_limit,
   }).mount('div.schedule-container')
   window.scheduleView = scheduleView
 
