@@ -15,7 +15,7 @@ if (scheduleContainer !== null) {
   let guid_filter: string[] = (scheduleContainer.dataset['guidFilter'] || '')
     .split(';')
     .filter((value) => {return value !== ''})
-  let duration_limit: number | undefined = 240
+  let duration_limit: number | undefined = scheduleContainer.dataset['durationLimit'] ? Number(scheduleContainer.dataset['durationLimit']) : undefined
   let schedule_url: string = (scheduleContainer.dataset['scheduleUrl'] || '')
   let current_schedule: Schedule|null = null
   const scheduleView: ComponentPublicInstance<typeof ScheduleView> = createApp(ScheduleView, {
