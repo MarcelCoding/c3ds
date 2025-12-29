@@ -37,19 +37,13 @@
 
 <template>
   <div class="mb-2 w-full grid grid-cols-schedule text-4xl gap-2">
-    <div class="font-numbers font-semibold text-5xl">{{ props.talk.start }}</div>
+    <div class="font-numbers font-semibold text-5xl pr-1">{{ props.talk.start }}</div>
     <div class="w-4" :style="{backgroundColor: props.talk.color}">&nbsp;</div>
-    <div style="position: relative">
+    <div :style="{background: `linear-gradient(90deg, var(--color-secondary-tint-03) ${percent_completed}%, rgba(0,0,0,0) ${percent_completed}%)`}" class="pl-2 pr-1">
       <h2 class="font-bold text-5xl">{{ props.talk.title }}</h2>
       <p>In {{ props.talk.room }}
         <template v-if="props.talk.speakers.length > 0"> with {{ props.talk.speakers.join(', ') }}</template>
       </p>
-       <div :style='{position: "absolute", left: "0", top: "0", width: "100%", backgroundColor: "var(--color-neutral)", color: "var(--color-dark)", clipPath: `rect(0 ${percent_completed}% 100% 0`}'>
-      <h2 class="font-bold text-5xl">{{ props.talk.title }}</h2>
-      <p>In {{ props.talk.room }}
-        <template v-if="props.talk.speakers.length > 0"> with {{ talk.speakers.join(', ') }}</template>
-      </p>
-    </div>
     </div>
   </div>
 </template>
