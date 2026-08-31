@@ -1,6 +1,0 @@
--r production.txt
-pyproject-flake8
-isort
-django-debug-toolbar
-django-extensions
-pur
