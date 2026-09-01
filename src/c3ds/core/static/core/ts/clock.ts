@@ -20,8 +20,8 @@ declare const window: Window & typeof globalThis & {
     dayElement.textContent = now.diff(dayZero, 'days').toString()
     timeElement.textContent = now.format('HH:mm')
 
-    if (offsetElement !== null) offsetElement.textContent = `Time offset: ${window.ntp?.offset?.toFixed(3)}ms`
-    if (latencyElement !== null) latencyElement.textContent = `Latency: ${window.ntp?.latency?.toFixed(3)}ms`
+    if (offsetElement !== null) offsetElement.textContent = `Zeitabweichung: ${window.ntp?.offset?.toFixed(3)}ms`
+    if (latencyElement !== null) latencyElement.textContent = `Latenz: ${window.ntp?.latency?.toFixed(3)}ms`
 
     window.setTimeout(() => {
       update_time()

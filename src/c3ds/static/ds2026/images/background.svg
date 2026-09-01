@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg viewBox="7.073 7.073 496 496" width="496" height="496" version="1.1" id="svg1112" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(14.645269,7.9783993)" id="g1112">
+    <g id="g1111">
+      <g id="g884">
+        <g id="g883" transform="translate(-2.5726359,-5027.9066)">
+          <g transform="translate(248,5280)" id="g443">
+            <path d="M 0,0 V 248 H 248 C 248,248 168.99293,169.00741 0,0 Z" stroke="#ff99bb" stroke-width="10" id="path442" style="fill: none;"/>
+          </g>
+          <g transform="translate(248,5280)" id="g444">
+            <path d="M 248,248 V 0 H 0 c 0,0 79.007075,78.992592 248,248 z" stroke="#ff99bb" stroke-width="10" id="path443" style="fill: none;"/>
+          </g>
+          <g transform="translate(248,5280)" id="g447">
+            <g transform="scale(1,-1)" id="g445">
+              <path d="M 0,0 V 248 H 248 C 248,248 168.99293,169.00741 0,0 Z" stroke="#ff99bb" stroke-width="10" id="path444" style="fill: none;"/>
+            </g>
+            <g transform="scale(1,-1)" id="g446">
+              <path d="M 248,248 V 0 H 0 c 0,0 79.007075,78.992592 248,248 z" stroke="#ff99bb" stroke-width="10" id="path445" style="fill: none;"/>
+            </g>
+          </g>
+          <g transform="translate(248,5280)" id="g453">
+            <g transform="scale(-1)" id="g448">
+              <path d="M 0,0 V 248 H 248 C 248,248 168.99293,169.00741 0,0 Z" stroke="#ff99bb" stroke-width="10" id="path447" style="fill: none;"/>
+            </g>
+            <g transform="scale(-1)" id="g449">
+              <path d="M 248,248 V 0 H 0 c 0,0 79.007075,78.992592 248,248 z" stroke="#ff99bb" stroke-width="10" id="path448" style="fill: none;"/>
+            </g>
+            <g transform="scale(-1)" id="g452">
+              <g transform="scale(1,-1)" id="g450">
+                <path d="M 0,0 V 248 H 248 C 248,248 168.99293,169.00741 0,0 Z" stroke="#ff99bb" stroke-width="10" id="path449" style="fill: none;"/>
+              </g>
+              <g transform="scale(1,-1)" id="g451">
+                <path d="M 248,248 V 0 H 0 c 0,0 79.007075,78.992592 248,248 z" stroke="#ff99bb" stroke-width="10" id="path450" style="fill: none;"/>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

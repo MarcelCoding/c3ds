@@ -1,6 +1,6 @@
 {% load static vite compress ds_utils %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,29 +16,32 @@
     {% vite 'c3ds/static/css/base.scss' %}
     {% vite 'core/ts/main.ts' 'core/ts/clock.ts' %}
     {% compress css %}
-    <link rel="stylesheet" href="{% static '39c3/fonts/fonts.css' %}">
+    <link rel="stylesheet" href="{% static 'ds2026/fonts/fonts.css' %}">
     {% endcompress %}
     <title>{% block title %}c3ds{% block title-extra %}{% endblock %}{% endblock %}</title>
 </head>
-<body class="text-primary bg-background layout-{{ layout_mode|default:'normal' }} {% block body_class %}{% endblock %}" {% block body_extra %}{% endblock %}{% if display %}data-display-slug="{{ display.slug }}"{% endif %}>
+<body class="text-fg bg-bg layout-{{ layout_mode|default:'normal' }} {% block body_class %}{% endblock %}" {% block body_extra %}{% endblock %}{% if display %}data-display-slug="{{ display.slug }}"{% endif %}>
 {% block body %}
     {% if layout_mode|default:'normal' != 'fullscreen' %}
-        <div class="border-primary border-8 rounded-3xl p-1 flex flex-col h-full overflow-hidden">
+        <div class="frame flex flex-col h-full overflow-hidden">
             {% if layout_mode|default:'normal' == 'normal' %}
-            <div class="h-32 flex flex-row gap-1 flex-shrink-0 p-4">
-                <div style="width: 310px">
-                    <h1 class="text-8xl logo">&lt;&lt;39C3</h1>
+            <div class="header-bar h-32 flex flex-row flex-shrink-0 px-4 py-2">
+                <div class="flex flex-col place-content-center" style="width: 310px">
+                    <h1 class="text-5xl logo">
+                        <span class="block">Datenspuren</span>
+                        <span class="block year">2026</span>
+                    </h1>
                 </div>
-                <div class="flex flex-row grow place-content-center">
+                <div class="flex flex-row grow place-content-center items-center">
                     {% block header %}<h1 class="text-8xl headline {{ header_text_extra_classes | default:'' }}">{% block header_text %}{% endblock %}</h1>{% endblock %}
                 </div>
                 <div class="flex flex-col place-content-center text-right clock" style="width: 310px" id="clock" data-day-zero="{{ event.day_zero }}">
-                    <p class="text-4xl mb-2">Day <span class="font-numbers">69</span></p>
+                    <p class="text-4xl mb-2">Tag <span class="font-numbers">69</span></p>
                     <p class="text-5xl font-numbers">13:37</p>
                 </div>
             </div>
             {% endif %}
-            <div class="bg-background grow p-2 relative cornerblob overflow-hidden flex flex-col h-full">
+            <div class="bg-bg grow p-2 relative overflow-hidden flex flex-col h-full">
     {% endif %}
                 {% block content %}{% endblock %}
     {% if layout_mode|default:'normal' != 'fullscreen' %}

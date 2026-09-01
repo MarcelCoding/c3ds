@@ -1,33 +1,65 @@
+@import '@fontsource/cabin/latin-400.css';
+@import '@fontsource/cabin/latin-700.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+* Datenspuren 2026 design tokens
+* derived from https://datenspuren.de/2026/style/2026.css
+*
+* The site ships two variants: magenta background with white type (default)
+* and black background with magenta type (prefers-color-scheme: dark).
+* Displays default to the dark variant, because a wall sized area of
+* #ff095c is rather loud in a dimly lit venue. Put `theme-light` on the
+* body to get the magenta variant instead.
+*/
+
 :root {
-    --color-dark: #141414;
-    --color-neutral: #faf5f5;
-    --color-primary: #00ff00;
-    --color-secondary: #9673ff;
-    --color-additional-01: #ff3719;
-    --color-additional-02: #66f2ff;
+    --px: 1vw;
 
-    --color-primary-tint-01: #009900;
-    --color-primary-tint-02: #00be00;
-    --color-primary-tint-03: #00d300;
-    --color-primary-tint-04: #00ea00;
-    --color-primary-tint-05: #a3ff90;
-    --color-primary-tint-06: #ccffbe;
-    --color-primary-tint-07: #ebffe5;
+    --ds-magenta: #ff095c;
+    --ds-white: #ffffff;
+    --ds-black: #000000;
 
-    --color-secondary-tint-01: #4d2eed;
-    --color-secondary-tint-02: #5c33f4;
-    --color-secondary-tint-03: #7952fe;
-    --color-secondary-tint-04: #b69dfe;
-    --color-secondary-tint-05: #d4c4fe;
-    --color-secondary-tint-06: #efe7ff;
+    // dark variant (default)
+    --color-bg: var(--ds-black);
+    --color-fg: var(--ds-magenta);
+    --color-accent: var(--ds-magenta);
+    --color-muted: #ff7ba5;
+    --color-line: var(--ds-magenta);
+    --color-line-soft: #80042e;
+    --color-progress: rgba(255, 9, 92, 0.3);
+
+    --color-dark: var(--ds-black);
+
+    --frame-border: calc(0.3 * var(--px));
+    --pattern: url('../ds2026/images/background-dark.svg');
+}
+
+.theme-light {
+    --color-bg: var(--ds-magenta);
+    --color-fg: var(--ds-white);
+    --color-accent: var(--ds-white);
+    --color-muted: #ffd0e0;
+    --color-line: var(--ds-white);
+    --color-line-soft: rgba(255, 255, 255, 0.45);
+    --color-progress: rgba(255, 255, 255, 0.25);
+
+    --pattern: url('../ds2026/images/background.svg');
+}
+
+@media (max-width: 1000px) {
+    :root {
+        --px: 1vh;
+    }
 }
 
 body {
   height: 100vh; // we can't use 100dvh, because cch uses chrome 70 -_-
+  margin: 0;
+  @apply font-sans bg-bg text-fg;
 
   &.layout-normal {
     @apply p-2;
@@ -40,97 +72,99 @@ body {
   }
 }
 
+/*
+* Frame & header, mirroring the hard edged rules of the website
+*/
+
+.frame {
+  border: var(--frame-border) solid var(--color-line);
+  border-radius: 0;
+}
+
+.header-bar {
+  border-bottom: var(--frame-border) solid var(--color-line);
+  background-image: var(--pattern);
+  background-size: calc(4.19 * var(--px));
+  background-repeat: repeat;
+}
+
 .headline {
   @apply font-headline;
-  font-variation-settings: "opsz" 140, "wdth" 94, "wght" 100;
+  letter-spacing: 0;
 
+  // the width axis classes of the previous variable font are kept as
+  // tracking variants, GeneraleStation is a static font
   &.compressed {
-    font-variation-settings: "wdth" 30;
+    letter-spacing: -0.045em;
   }
   &.xCondensed {
-    font-variation-settings: "wdth" 56;
+    letter-spacing: -0.03em;
   }
   &.condensed {
-    font-variation-settings: "wdth" 67;
+    letter-spacing: -0.02em;
   }
   &.narrow {
-    font-variation-settings: "wdth" 80;
+    letter-spacing: -0.01em;
   }
   &.regular {
-    font-variation-settings: "wdth" 94;
+    letter-spacing: 0;
   }
   &.extended {
-    font-variation-settings: "wdth" 120;
+    letter-spacing: 0.05em;
   }
   &.xExtended {
-    font-variation-settings: "wdth" 160;
+    letter-spacing: 0.1em;
   }
 }
 
 .logo {
   @apply font-headline;
-  font-variation-settings: "opsz" 140, "wdth" 67, "wght" 100;
-}
+  line-height: 0.9;
 
-@keyframes font_weight_wave {
-  from {
-    font-variation-settings: "opsz" 140, "wdth" 67, "wght" 10;
-    //font-weight: 10;
-  }
-  to {
-    font-variation-settings: "opsz" 140, "wdth" 67, "wght" 100;
-    //font-weight: 100;
+  .year {
+    text-align: right;
+    margin-top: calc(-0.66 * var(--px));
   }
 }
 
-.font-width-animated {
-  //font-variation-settings: initial;
-  animation: font_weight_wave 3s ease-in-out 0s infinite alternate both;
-
-  &.reversed {
-    animation-direction: alternate-reverse;
-  }
-}
-
-@keyframes font_weight_wave_wide {
-  from {
-    font-variation-settings: "opsz" 140, "wdth" 160, "wght" 10;
-    //font-weight: 10;
-  }
-  to {
-    font-variation-settings: "opsz" 140, "wdth" 160, "wght" 100;
-    //font-weight: 100;
-  }
-}
-
-.font-width-animated-wide {
-  //font-variation-settings: initial;
-  animation: font_weight_wave_wide 3s ease-in-out 0s infinite alternate both;
-
-  &.reversed {
-    animation-direction: alternate-reverse;
-  }
+.motto {
+  @apply font-display;
+  color: var(--color-fg);
+  line-height: 1;
 }
 
 .clock {
   @apply font-headline;
   font-variant-numeric: tabular-nums;
-  font-variation-settings: "opsz" 140, "wdth" 120, "wght" 80;
 }
 
-.track {
-  padding-right: 60px;
-  border-bottom-width: 12px;
+.font-numbers {
+  font-variant-numeric: tabular-nums;
+}
 
-  &:first-of-type {
-    padding-left: 0.25rem;
-    border-left-width: 12px;
+/*
+* Breathing animation for the idle screens. The old variable font width
+* wave does not work with static fonts, so tracking and opacity carry it.
+*/
+
+@keyframes ds_breathe {
+  from {
+    letter-spacing: -0.02em;
+    opacity: 0.55;
+  }
+  to {
+    letter-spacing: 0.06em;
+    opacity: 1;
   }
 }
 
-.legend-color {
-  width: 100%;
-  height: 8px;
+.font-width-animated,
+.font-width-animated-wide {
+  animation: ds_breathe 3s ease-in-out 0s infinite alternate both;
+
+  &.reversed {
+    animation-direction: alternate-reverse;
+  }
 }
 
 
@@ -181,6 +215,7 @@ body {
   max-width: 40%;
   display: flex;
   flex-direction: column;
+  color: var(--color-fg);
 
   #log {
     height: 100%;
@@ -197,15 +232,17 @@ body {
     width: 100%;
     padding: 4px 10px;
 
-    border: 1px solid black;
-    background: #e1e1e1;
+    border: 1px solid var(--color-line);
+    background: var(--color-bg);
+    color: var(--color-fg);
+    border-radius: 0;
 
     outline: none;
   }
 
   .entry {
-    background-color: #e8e8e8;
-    border: 1px solid #999999;
+    background-color: transparent;
+    border: 1px solid var(--color-line-soft);
     border-top-width: 0;
 
     &:first-child {
@@ -217,13 +254,14 @@ body {
     }
 
     &.ok {
-      background-color: #bfffbf;
-      border-color: #82ff82;
+      border-color: var(--color-line);
+      background-color: var(--color-progress);
     }
 
     &.err {
-      background-color: #ffbfbf;
-      border-color: #ff8282;
+      border-color: var(--ds-magenta);
+      background-color: var(--ds-magenta);
+      color: var(--color-bg);
     }
 
     p {
@@ -243,7 +281,7 @@ body {
   .sent {
     display: flex;
     min-height: 52px;
-    border-bottom: 1px dotted black;
+    border-bottom: 1px dotted currentColor;
   }
 
   .time {

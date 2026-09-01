@@ -36,18 +36,47 @@
 </script>
 
 <template>
-  <div class="mb-2 w-full grid grid-cols-schedule text-4xl gap-2">
-    <div class="font-numbers font-semibold text-5xl pr-1">{{ props.talk.start }}</div>
-    <div class="w-4" :style="{backgroundColor: props.talk.color}">&nbsp;</div>
-    <div :style="{background: `linear-gradient(90deg, var(--color-secondary-tint-03) ${percent_completed}%, rgba(0,0,0,0) ${percent_completed}%)`}" class="pl-2 pr-1">
-      <h2 class="font-bold text-5xl">{{ props.talk.title }}</h2>
-      <p>In {{ props.talk.room }}
-        <template v-if="props.talk.speakers.length > 0"> with {{ props.talk.speakers.join(', ') }}</template>
+  <div class="schedule-row w-full grid grid-cols-schedule text-4xl gap-2">
+    <div class="time font-numbers text-5xl pr-1">{{ props.talk.start }}</div>
+    <div class="marker" :style="{backgroundColor: props.talk.color}">&nbsp;</div>
+    <div class="talk pl-2 pr-1" :style="{background: `linear-gradient(90deg, var(--color-progress) ${percent_completed}%, rgba(0,0,0,0) ${percent_completed}%)`}">
+      <h2 class="title text-5xl">{{ props.talk.title }}</h2>
+      <p class="meta">in {{ props.talk.room }}
+        <template v-if="props.talk.speakers.length > 0">mit {{ props.talk.speakers.join(', ') }}</template>
       </p>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* Datenspuren 2026: hard edges, hairline rules between the entries */
+.schedule-row {
+  /* items stretch, so the track colour bar spans the whole row */
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid var(--color-line-soft);
+}
 
+.time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--color-fg);
+}
+
+.marker {
+  /* talks without a track keep the accent colour instead of a gap */
+  background-color: var(--color-accent);
+}
+
+.title {
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--color-fg);
+}
+
+.meta {
+  color: var(--color-muted);
+  line-height: 1.15;
+}
 </style>

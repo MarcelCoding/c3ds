@@ -136,17 +136,38 @@ import {getCurrentTime} from "../ts/ntp.ts";
 </script>
 
 <template>
-  <TransitionGroup name="list" tag="div" class="schedule flex flex-col flex-wrap overflow-hidden flex-grow text-neutral">
+  <TransitionGroup name="list" tag="div" class="schedule flex flex-col flex-wrap overflow-hidden flex-grow text-fg">
     <ScheduleRow v-for="talk in next_talks" :key="talk.guid" :talk="talk"></ScheduleRow>
   </TransitionGroup>
-  <div class="legend flex flex-wrap flex-shrink-0 -mx-1">
-    <div v-for="track in tracks" :key="track.slug" class="track text-3xl mx-1" :style="{borderColor: track.color}">
+  <div class="legend flex flex-wrap flex-shrink-0">
+    <div v-for="track in tracks" :key="track.slug" class="track text-3xl" :style="{borderColor: track.color}">
       <p>{{ track.name }}</p>
-<!--      <div class="legend-color" :style="{backgroundColor: track.color}"></div>-->
     </div>
   </div>
 </template>
 
 <style scoped>
+/* Datenspuren 2026: the legend sits below a rule, like the sections on the website */
+.legend {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-fg);
+}
 
+.track {
+  padding-right: 2.5rem;
+  margin-bottom: 0.5rem;
+  border-bottom-style: solid;
+  border-bottom-width: 12px;
+  border-bottom-color: var(--color-accent);
+  line-height: 1.1;
+}
+
+.track:first-of-type {
+  padding-left: 0.25rem;
+  border-left-style: solid;
+  border-left-width: 12px;
+  border-left-color: var(--color-accent);
+}
 </style>

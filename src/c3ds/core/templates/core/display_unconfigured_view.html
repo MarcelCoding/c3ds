@@ -3,13 +3,13 @@
 {% block body_extra %}data-display-slug="{{ slug }}"{% endblock %}
 {% block content %}
     <div class="flex flex-col justify-center grow">
-        <h1 class="text-8xl font-bold m-4 text-center">{{ display_status|default:"Display Unconfigured" }}</h1>
+        <h1 class="text-8xl headline m-4 text-center">{{ display_status|default:"Display nicht konfiguriert" }}</h1>
         <h2 class="text-6xl font-bold m-4 text-center font-numbers">Slug: {{ slug }}</h2>
         <h2 class="text-6xl font-bold m-4 text-center font-numbers">IP: {{ extra_data.ip_address }}</h2>
-        <div class="grid grid-cols-2 gap-4 text-5xl m-4">
-            <p class="text-right" id="ntp-time-offset">Time offset: ???ms</p>
-            <p class="" id="ntp-latency">Latency: ???ms</p>
+        <div class="grid grid-cols-2 gap-4 text-5xl m-4 text-muted">
+            <p class="text-right" id="ntp-time-offset">Zeitabweichung: ???ms</p>
+            <p class="" id="ntp-latency">Latenz: ???ms</p>
         </div>
-    <p class="text-center headline xCondensed font-width-animated-wide" style="font-size: 20rem; line-height: 1">&lt;&lt;toggle</p>
+    <p class="text-center motto font-width-animated-wide" style="font-size: calc(9 * var(--px))">aufbrechen</p>
     </div>
 {% endblock %}
