@@ -27,40 +27,40 @@
         "./*"
       ],
       "@s:daphne/*": [
-        "./../env/lib/python3.13/site-packages/daphne/static/daphne/*"
+        "./../../../../../../nix/store/anxj2cr3cafm6m01528fmnlqiljxif4s-python3.13-daphne-4.2.2/lib/python3.13/site-packages/daphne/static/daphne/*"
       ],
       "@t:daphne/*": [
-        "./../env/lib/python3.13/site-packages/daphne/templates/daphne/*"
+        "./../../../../../../nix/store/anxj2cr3cafm6m01528fmnlqiljxif4s-python3.13-daphne-4.2.2/lib/python3.13/site-packages/daphne/templates/daphne/*"
       ],
       "@s:channels/*": [
-        "./../env/lib/python3.13/site-packages/channels/static/channels/*"
+        "./../../../../../../nix/store/3r6f5syyfnviiikj22vchdqjry3ql4dz-python3.13-channels-4.3.2/lib/python3.13/site-packages/channels/static/channels/*"
       ],
       "@t:channels/*": [
-        "./../env/lib/python3.13/site-packages/channels/templates/channels/*"
+        "./../../../../../../nix/store/3r6f5syyfnviiikj22vchdqjry3ql4dz-python3.13-channels-4.3.2/lib/python3.13/site-packages/channels/templates/channels/*"
       ],
       "@s:compressor/*": [
-        "./../env/lib/python3.13/site-packages/compressor/static/compressor/*"
+        "./../../../../../../nix/store/y1wcvim9aiaf71prbgi3a4g9f8m4gy8j-python3.13-django-compressor-4.6/lib/python3.13/site-packages/compressor/static/compressor/*"
       ],
       "@t:compressor/*": [
-        "./../env/lib/python3.13/site-packages/compressor/templates/compressor/*"
+        "./../../../../../../nix/store/y1wcvim9aiaf71prbgi3a4g9f8m4gy8j-python3.13-django-compressor-4.6/lib/python3.13/site-packages/compressor/templates/compressor/*"
       ],
       "@s:ninja/*": [
-        "./../env/lib/python3.13/site-packages/ninja/static/ninja/*"
+        "./../../../../../../nix/store/2n2mj36d6skl2gwgbjhb8szxw1bjd3pp-python3.13-django-ninja-1.6.2/lib/python3.13/site-packages/ninja/static/ninja/*"
       ],
       "@t:ninja/*": [
-        "./../env/lib/python3.13/site-packages/ninja/templates/ninja/*"
+        "./../../../../../../nix/store/2n2mj36d6skl2gwgbjhb8szxw1bjd3pp-python3.13-django-ninja-1.6.2/lib/python3.13/site-packages/ninja/templates/ninja/*"
       ],
       "@s:social_django/*": [
-        "./../env/lib/python3.13/site-packages/social_django/static/social_django/*"
+        "./../../../../../../nix/store/1lra5shhac1bq083whbc6mr8h21rz8ly-python3.13-social-auth-app-django-5.9.0/lib/python3.13/site-packages/social_django/static/social_django/*"
       ],
       "@t:social_django/*": [
-        "./../env/lib/python3.13/site-packages/social_django/templates/social_django/*"
+        "./../../../../../../nix/store/1lra5shhac1bq083whbc6mr8h21rz8ly-python3.13-social-auth-app-django-5.9.0/lib/python3.13/site-packages/social_django/templates/social_django/*"
       ],
       "@s:django_prometheus/*": [
-        "./../env/lib/python3.13/site-packages/django_prometheus/static/django_prometheus/*"
+        "./../../../../../../nix/store/cdpn02dwjsj3igs8k616z5qnlljir8yi-python3.13-django-prometheus-2.4.1/lib/python3.13/site-packages/django_prometheus/static/django_prometheus/*"
       ],
       "@t:django_prometheus/*": [
-        "./../env/lib/python3.13/site-packages/django_prometheus/templates/django_prometheus/*"
+        "./../../../../../../nix/store/cdpn02dwjsj3igs8k616z5qnlljir8yi-python3.13-django-prometheus-2.4.1/lib/python3.13/site-packages/django_prometheus/templates/django_prometheus/*"
       ]
     }
   },
