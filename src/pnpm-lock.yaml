@@ -11,12 +11,18 @@ importers:
       '@fontsource/cabin':
         specifier: ^5.3.0
         version: 5.3.0
+      '@fontsource/noto-color-emoji':
+        specifier: ^5.3.1
+        version: 5.3.1
       axios:
         specifier: ^1.20.0
         version: 1.20.0
       date-fns:
         specifier: ^4.1.0
         version: 4.4.0
+      dompurify:
+        specifier: ^3.4.14
+        version: 3.4.14
       sass:
         specifier: ^1.103.1
         version: 1.103.1
@@ -77,6 +83,9 @@ packages:
 
   '@fontsource/cabin@5.3.0':
     resolution: {integrity: sha512-c2NSbpO6XSqaq6E6ztHqgdNxzCPJCxkNvnSEjkQRidlL3Ycac00sS9XTRT6RfMFeB3+C7V3vgN1S40nM6lthuw==}
+
+  '@fontsource/noto-color-emoji@5.3.1':
+    resolution: {integrity: sha512-g7gLb7aznnC50pkW78d7UnXiQcmVMQUpEXXOT4rNK6N3l90Rh7KV6Lp4MzfaHijVajA3kjy0aX9N1pvvj+Cprg==}
 
   '@isaacs/cliui@9.0.0':
     resolution: {integrity: sha512-AokJm4tuBHillT+FpMtxQ60n8ObyXBatq7jD2/JA9dxbDDokKQm8KMht5ibGzLVU9IJDIKK4TPKgMHEYMn3lMg==}
@@ -260,6 +269,9 @@ packages:
   '@types/node@25.9.5':
     resolution: {integrity: sha512-OScDchr2fwuUmWdf4kZ9h7PcJiYDVInhJizG/biAq3cAvqwYktuy/TYGGdZNMtNTFUP7rnb0NU4TUdm82kt4Rg==}
 
+  '@types/trusted-types@2.0.7':
+    resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
+
   '@videojs/http-streaming@3.17.5':
     resolution: {integrity: sha512-PRRQVu0hYW5h0XvRWpIyIpEatpMZzZtf7L1avV89Hnu+69f+0c7oLsSL9jwpg2nbvzGkdX5rQxQkz5Vc7tFR9w==}
     engines: {node: '>=8', npm: '>=5'}
@@ -429,6 +441,9 @@ packages:
 
   dom-walk@0.1.2:
     resolution: {integrity: sha512-6QvTW9mrGeIegrFXdtQi9pk7O/nSK6lSdXW2eqUspN5LWD7UTji2Fqw5V2YLjBpHEoU9Xl/eUWNpDeZvoyOv2w==}
+
+  dompurify@3.4.14:
+    resolution: {integrity: sha512-dVoH9z+MY+C9IilgGCk3YfFqjLi3fChm2OiKJMzh6axrJ5qwxqWaZamgmHrpv22CN/KdbZJuGEGgfQoL00LTdg==}
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -891,6 +906,8 @@ snapshots:
 
   '@fontsource/cabin@5.3.0': {}
 
+  '@fontsource/noto-color-emoji@5.3.1': {}
+
   '@isaacs/cliui@9.0.0': {}
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
@@ -1004,6 +1021,9 @@ snapshots:
   '@types/node@25.9.5':
     dependencies:
       undici-types: 7.24.6
+
+  '@types/trusted-types@2.0.7':
+    optional: true
 
   '@videojs/http-streaming@3.17.5(video.js@8.24.0)':
     dependencies:
@@ -1219,6 +1239,10 @@ snapshots:
       picocolors: 1.1.1
 
   dom-walk@0.1.2: {}
+
+  dompurify@3.4.14:
+    optionalDependencies:
+      '@types/trusted-types': 2.0.7
 
   dunder-proto@1.0.1:
     dependencies:

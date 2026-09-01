@@ -16,6 +16,14 @@
     url('@fontsource/cabin/files/cabin-latin-700-normal.woff') format('woff');
 }
 
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/noto-color-emoji/files/noto-color-emoji-full.woff2') format('woff2');
+}
+
 :root {
   --ds-magenta: #ff095c;
   --ds-muted: #ff7ba5;
@@ -34,7 +42,7 @@
 body {
   height: 100vh;
   margin: 0;
-  font-family: 'Cabin', sans-serif;
+  font-family: 'Cabin', 'Noto Color Emoji', sans-serif;
   background-color: var(--ds-black);
   color: var(--ds-white);
 
@@ -400,5 +408,83 @@ iframe {
 
   &.is-active {
     visibility: visible;
+  }
+}
+
+.mastodon-post {
+  padding: 2rem;
+
+  .mastodon-post-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .mastodon-avatar {
+    width: 8rem;
+    height: 8rem;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .mastodon-account {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .mastodon-display-name {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--ds-white);
+  }
+
+  .mastodon-username {
+    font-size: 2rem;
+    color: var(--ds-muted);
+  }
+
+  .mastodon-time {
+    font-size: 2rem;
+    color: var(--ds-muted);
+  }
+
+  .mastodon-content-area {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+  }
+
+  .mastodon-media {
+    flex-shrink: 0;
+    width: 25rem;
+  }
+
+  .mastodon-image {
+    width: 100%;
+    max-height: 30rem;
+    object-fit: cover;
+    border-radius: 0.5rem;
+  }
+
+  .mastodon-content {
+    flex: 1;
+    min-width: 0;
+    font-size: 2.5rem;
+    line-height: 1.6;
+    color: var(--ds-white);
+    margin-bottom: 1.5rem;
+
+    a {
+      color: var(--ds-magenta);
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 }

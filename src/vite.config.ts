@@ -23,6 +23,7 @@ export default defineConfig({
         'c3ds/core/static/core/ts/schedule.ts',
         'c3ds/core/static/core/ts/playlist.ts',
         'c3ds/core/static/core/ts/video.ts',
+        'c3ds/core/static/core/ts/mastodon.ts',
       ],
     }),
     {

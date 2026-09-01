@@ -13,7 +13,7 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
 from c3ds.core.models import (Display, DisplayQuerySet, HTMLView, IFrameView, ImageFile, ImageView, Playlist, PlaylistEntry, Schedule,
-                              ScheduleView, VideoFile, VideoView)
+                              ScheduleView, MastodonPost, MastodonPostView, VideoFile, VideoView)
 
 class SlugLinkMixin():
     slug_view = 'view_by_slug'
@@ -124,6 +124,22 @@ class ScheduleAdmin(admin.ModelAdmin):
 @admin.register(ScheduleView)
 class ScheduleViewAdmin(ViewAdmin):
     list_display = ('name', 'slug', 'title', 'layout_mode', 'schedule', 'room_filter', 'link', 'last_changed')
+
+
+@admin.register(MastodonPost)
+class MastodonPostAdmin(admin.ModelAdmin):
+    list_display = ('name', 'hashtags', 'last_fetched', 'last_changed')
+    actions = ('fetch_posts',)
+
+    @admin.action(description=_('Fetch Posts from Fedi.buzz'))
+    def fetch_posts(self, request, queryset):
+        for post in queryset:
+            post.fetch_posts()
+
+
+@admin.register(MastodonPostView)
+class MastodonPostViewAdmin(ViewAdmin):
+    list_display = ('name', 'slug', 'title', 'layout_mode', 'mastodon_post', 'link', 'last_changed')
 
 
 class PlaylistEntryInline(admin.TabularInline):

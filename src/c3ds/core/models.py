@@ -400,3 +400,70 @@ class ScheduleView(BaseView):
         verbose_name_plural = _('Schedule Views')
         default_related_name = 'schedule_views'
         ordering = ["name"]
+
+
+class MastodonPost(models.Model):
+    name = models.CharField(max_length=128, verbose_name=_('Name'))
+    uuid = models.UUIDField(verbose_name=_('UUID'), default=uuid.uuid4, editable=False, unique=True)
+    hashtags = models.CharField(max_length=512, verbose_name=_('Hashtags'),
+                                help_text=_('Comma or semicolon-separated list of hashtags, e.g. "datenspuren;c3sd"'))
+    post_data = models.JSONField(verbose_name=_('Post Data'), blank=True, null=True)
+    last_fetched = models.DateTimeField(verbose_name=_('Last Fetched'), null=True, blank=True)
+    last_changed = models.DateTimeField(verbose_name=_('Last Changed'), auto_now=True)
+    created_at = models.DateTimeField(verbose_name=_('Created At'), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('Mastodon Post')
+        verbose_name_plural = _('Mastodon Posts')
+        default_related_name = 'mastodon_posts'
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def get_hashtags(self) -> list[str]:
+        return [h.strip() for h in self.hashtags.replace(',', ';').split(';') if h.strip()]
+
+    def fetch_posts(self, force: bool = False):
+        if self.pk is None:
+            raise ValueError('Save model first')
+        import requests as req_lib
+        from datetime import datetime, timezone
+        latest_post = None
+        latest_created_at = None
+        for hashtag in self.get_hashtags():
+            url = f'https://fedi.buzz/api/v1/timelines/tag/{hashtag}?limit=1'
+            try:
+                resp = req_lib.get(url, timeout=10)
+                resp.raise_for_status()
+                posts = resp.json()
+                if posts and isinstance(posts, list) and len(posts) > 0:
+                    post = posts[0]
+                    created_at = datetime.fromisoformat(post['created_at'].replace('Z', '+00:00'))
+                    if latest_created_at is None or created_at > latest_created_at:
+                        latest_created_at = created_at
+                        latest_post = {
+                            'hashtag': hashtag,
+                            **post,
+                        }
+            except Exception as e:
+                logger.warning('Failed to fetch posts for hashtag "%s": %s', hashtag, e)
+        if latest_post:
+            self.post_data = latest_post
+            self.last_fetched = datetime.now(tz=timezone.utc)
+            self.save()
+            logger.info('Updated MastodonPost "%s" [%d] from hashtag "%s"', self.name, self.pk, latest_post['hashtag'])
+
+
+class MastodonPostView(BaseView):
+    template_name = 'core/mastodon_post_view.html'
+    vue_module = 'MastodonPostView'
+    mastodon_post = models.ForeignKey(MastodonPost, on_delete=models.PROTECT, verbose_name=_('Mastodon Post'))
+    refresh_interval = models.PositiveIntegerField(verbose_name=_('Refresh Interval'), default=60,
+                                                   help_text=_('Refresh interval in seconds'))
+
+    class Meta:
+        verbose_name = _('Mastodon Post View')
+        verbose_name_plural = _('Mastodon Post Views')
+        default_related_name = 'mastodon_post_views'
+        ordering = ["name"]
