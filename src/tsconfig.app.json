@@ -21,7 +21,48 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@s:daphne/*": [
+        "./../env/lib/python3.13/site-packages/daphne/static/daphne/*"
+      ],
+      "@t:daphne/*": [
+        "./../env/lib/python3.13/site-packages/daphne/templates/daphne/*"
+      ],
+      "@s:channels/*": [
+        "./../env/lib/python3.13/site-packages/channels/static/channels/*"
+      ],
+      "@t:channels/*": [
+        "./../env/lib/python3.13/site-packages/channels/templates/channels/*"
+      ],
+      "@s:compressor/*": [
+        "./../env/lib/python3.13/site-packages/compressor/static/compressor/*"
+      ],
+      "@t:compressor/*": [
+        "./../env/lib/python3.13/site-packages/compressor/templates/compressor/*"
+      ],
+      "@s:ninja/*": [
+        "./../env/lib/python3.13/site-packages/ninja/static/ninja/*"
+      ],
+      "@t:ninja/*": [
+        "./../env/lib/python3.13/site-packages/ninja/templates/ninja/*"
+      ],
+      "@s:social_django/*": [
+        "./../env/lib/python3.13/site-packages/social_django/static/social_django/*"
+      ],
+      "@t:social_django/*": [
+        "./../env/lib/python3.13/site-packages/social_django/templates/social_django/*"
+      ],
+      "@s:django_prometheus/*": [
+        "./../env/lib/python3.13/site-packages/django_prometheus/static/django_prometheus/*"
+      ],
+      "@t:django_prometheus/*": [
+        "./../env/lib/python3.13/site-packages/django_prometheus/templates/django_prometheus/*"
+      ]
+    }
   },
   "include": [
     "c3ds/static/**/*.ts", "c3ds/static/**/*.tsx", "c3ds/static/**/*.vue",

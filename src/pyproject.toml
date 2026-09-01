@@ -24,6 +24,7 @@ dependencies = [
     "django_vite_plugin>=3.0.4",
     "hiredis>=2.4.0",
     "prometheus-client>=0.21.1",
+    "psycopg[binary]>=3.2",
     "qrcode>=8.0",
     "redis>=5.2.0",
     "requests>=2.32.3",
