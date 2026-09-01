@@ -1,7 +1,6 @@
-from django.conf import settings
 from django.urls import path
 
-from c3ds.core.views import DisplayView, GenericView, ShellView
+from c3ds.core.views import DisplayView, GenericView
 
 urlpatterns = [
     path('views/<int:pk>/', GenericView.as_view(), name='view_by_pk'),
@@ -9,8 +8,3 @@ urlpatterns = [
     path('display/<slug:slug>/', DisplayView.as_view(), name='display_by_slug_long'),
     path('d/<slug:slug>/', DisplayView.as_view(), name='display_by_slug'),
 ]
-
-if settings.REMOTE_SHELL:
-    urlpatterns += [
-        path('shell/<slug:slug>/', ShellView.as_view(), name='shell_by_slug'),
-    ]

@@ -1,12 +1,16 @@
+import json
 from typing import Optional
 
 from django.http import Http404
-from django.shortcuts import render
-from django.views.generic import DetailView, TemplateView
+from django.utils.decorators import method_decorator
+from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.generic import DetailView
 
 from c3ds.core.models import BaseView, Display
 
 
+# Playlists render their entries in an iframe.
+@method_decorator(xframe_options_sameorigin, name='dispatch')
 class GenericView(DetailView):
     model = BaseView
     context_object_name = 'view'
@@ -29,18 +33,7 @@ class GenericView(DetailView):
         return ctx
 
 
-class ShellView(DetailView):
-    model = Display
-    context_object_name = 'shell'
 
-    template_name = "core/remote_shell_backend.html"
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx.update({
-            'slug': self.kwargs.get(self.slug_url_kwarg)
-        })
-        return ctx
 
 
 class DisplayView(DetailView):
@@ -68,27 +61,40 @@ class DisplayView(DetailView):
             return ['core/display_unconfigured_view.html']
         elif self.object.static_view is not None:
             return [self.get_view().get_template_name()]
+        elif self.object.playlist is not None:
+            return ['core/playlist_view.html']
         else:
-            raise NotImplementedError('Playlist support not yet implemented')
+            return ['core/display_unconfigured_view.html']
 
 
     def get_view(self) -> Optional[BaseView]:
         if self.is_unconfigured or self.object is None:
+            return None
+        if self.object.static_view is None:
             return None
         if self._view is None:
             self._view = self.object.static_view.get_specific()
         return self._view
 
     def get_layout_mode(self):
-        return getattr(self.get_view(), 'layout_mode', 'normal') if self.get_view() is not None else 'normal'
+        # Playlist entries are rendered in their own frame, each with its own layout mode.
+        if self.object is not None and self.object.playlist is not None:
+            return BaseView.LayoutModes.FULLSCREEN
+        view = self.get_view()
+        return getattr(view, 'layout_mode', 'normal') if view is not None else 'normal'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        view = self.get_view()
         ctx.update({
-            'view': self.get_view(),
+            'view': view,
             'layout_mode': self.get_layout_mode(),
             'slug': self.kwargs.get(self.slug_url_kwarg)
         })
-        if self.get_view() is not None:
-            ctx.update(self.get_view().get_context())
+        if view is not None:
+            ctx.update(view.get_context())
+
+        if self.object is not None and self.object.playlist is not None:
+            ctx['playlist_json'] = json.dumps(self.object.playlist.get_items())
+
         return ctx

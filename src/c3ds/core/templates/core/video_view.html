@@ -1,6 +1,10 @@
 {% extends "core/base.html" %}
+{% load vite %}
 {% block header_text %}{{ view.title }}{% endblock %}
 {% block content %}
-        <video id="video" class="video-js !bg-transparent" data-src="{{ view.get_video_src }}" data-type="{{ view.get_video_type }}">
-        </video>
+    <video id="video" class="video-js video-fullscreen" playsinline muted
+           data-src="{{ view.get_video_src }}" data-type="{{ view.get_video_type }}"
+           data-loop="{{ view.video.loop|yesno:'1,' }}">
+    </video>
+    {% vite 'core/ts/video.ts' %}
 {% endblock %}

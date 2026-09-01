@@ -1,5 +1,5 @@
 import {ReceivedWebSocketCommand, WebSocketClient, WebSocketCommand} from "./websocket.ts";
-import moment, {Moment} from "moment";
+import { addMilliseconds, formatISO } from "date-fns";
 
 declare const window: Window & typeof globalThis & {
  ntp?: NTPClient
@@ -63,13 +63,13 @@ export class NTPClient {
       console.error('invalid NTP response', response)
       return;
     }
-    const serverTime = moment(response.serverTime)
+    const serverTime = new Date(response.serverTime)
     const roundTripTime = response.receiveTimestampe - response.clientSendTimestamp
     const offset = Date.now() - (response.serverTime + roundTripTime / 2 + performance.now() - response.receiveTimestampe)
     this.latency = roundTripTime
     this.offset = offset
 
-    console.log(`Received NTP Response after ${roundTripTime}ms with server time ${serverTime.toISOString(true)} (an offset of ${offset}ms)`)
+    console.log(`Received NTP Response after ${roundTripTime}ms with server time ${formatISO(serverTime)} (an offset of ${offset}ms)`)
     const ntpReport: NTPReport = {
       cmd: "NTPReport",
       ntpOffset: offset,
@@ -78,15 +78,15 @@ export class NTPClient {
     this.ws.send(ntpReport)
   }
 
-  getAdjustedTime(): Moment {
-    const now = moment()
+  getAdjustedTime(): Date {
+    const now = new Date()
     if (this.offset != null) {
-      now.subtract(this.offset, 'milliseconds')
+      return addMilliseconds(now, -this.offset)
     }
     return now
   }
 }
 
-export function getCurrentTime(): Moment {
-  return !window.ntp ? moment() : window.ntp.getAdjustedTime()
+export function getCurrentTime(): Date {
+  return !window.ntp ? new Date() : window.ntp.getAdjustedTime()
 }

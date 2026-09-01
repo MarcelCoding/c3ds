@@ -8,13 +8,14 @@
   }>()
 
   const now = ref(getCurrentTime())
-  const duration_seconds: number = props.talk.moment_duration.asSeconds()
+  const duration_seconds: number = props.talk.moment_duration * 60
 
   const percent_completed: ComputedRef<number> = computed(() => {
-    if (props.talk.date_start.isAfter(now.value)) {
+    if (props.talk.date_start > now.value) {
       return  0
     } else {
-      return now.value.diff(props.talk.date_start, 's', true) / duration_seconds * 100
+      const elapsed = now.value.getTime() - props.talk.date_start.getTime()
+      return elapsed / (duration_seconds * 1000) * 100
     }
   })
 
@@ -47,36 +48,3 @@
     </div>
   </div>
 </template>
-
-<style scoped>
-/* Datenspuren 2026: hard edges, hairline rules between the entries */
-.schedule-row {
-  /* items stretch, so the track colour bar spans the whole row */
-  padding-bottom: 0.35rem;
-  margin-bottom: 0.35rem;
-  border-bottom: 1px solid var(--color-line-soft);
-}
-
-.time {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  line-height: 1.05;
-  color: var(--color-fg);
-}
-
-.marker {
-  /* talks without a track keep the accent colour instead of a gap */
-  background-color: var(--color-accent);
-}
-
-.title {
-  font-weight: 700;
-  line-height: 1.05;
-  color: var(--color-fg);
-}
-
-.meta {
-  color: var(--color-muted);
-  line-height: 1.15;
-}
-</style>

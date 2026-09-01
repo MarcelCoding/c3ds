@@ -7,7 +7,7 @@ declare const window: Window & typeof globalThis & {
  scheduleView?: ComponentPublicInstance<typeof ScheduleView>
 }
 
-const scheduleContainer: HTMLElement|null = document.querySelector('div.schedule-container')
+const scheduleContainer: HTMLElement|null = document.querySelector('div.schedule-layout')
 if (scheduleContainer !== null) {
   let room_filter: string[] = (scheduleContainer.dataset['roomFilter'] || '')
     .split(';')
@@ -23,8 +23,24 @@ if (scheduleContainer !== null) {
     room_filter,
     guid_filter,
     duration_limit,
-  }).mount('div.schedule-container')
+  }).mount('div.schedule-layout')
   window.scheduleView = scheduleView
+
+  const legendContainer = document.querySelector('div.legend-container')
+  
+  const render_legend = () => {
+    if (legendContainer) {
+      const tracks = scheduleView.tracks as any
+      if (tracks && Object.keys(tracks).length > 0) {
+        let html = '<div class="legend flex flex-wrap flex-shrink-0">'
+        for (let [, track] of Object.entries(tracks)) {
+          html += `<div class="track text-3xl" style="border-color: ${(track as any).color || ''}">${(track as any).name}</div>`
+        }
+        html += '</div>'
+        legendContainer.innerHTML = html
+      }
+    }
+  }
 
   const load_data = () => {
     console.log('fetching schedule')
@@ -35,6 +51,7 @@ if (scheduleContainer !== null) {
         console.log("schedule version %s loaded", schedule.schedule.version)
         current_schedule = schedule.schedule
         scheduleView.schedule = current_schedule
+        setTimeout(render_legend, 100)
       } else {
         console.log('schedule unchanged')
       }

@@ -15,7 +15,6 @@
             buildInputs =
               let
                 deps = with pkgs; [
-                yarn-berry
                 ];
                 pythonDeps = with pkgs.python3Packages; [
       celery

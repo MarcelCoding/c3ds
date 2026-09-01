@@ -280,7 +280,7 @@ DAY_ZERO = env.str('C3DS_DAY_ZERO', default=None)
 if DAY_ZERO:
     DAY_ZERO = datetime.datetime.fromisoformat(DAY_ZERO)
 
-REMOTE_SHELL = env.bool('C3DS_REMOTE_SHELL', default=False)
+
 
 DELAYED_RELOAD_THRESHOLD = env.int('C3DS_DELAYED_RELOAD_THRESHOLD', default=10)
 

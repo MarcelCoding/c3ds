@@ -122,6 +122,10 @@ class VideoFile(MediaFile):
         verbose_name_plural = _('Videos')
 
 
+#: Fallback for entries that neither carry a duration nor end on their own.
+DEFAULT_DISPLAY_DURATION = 30
+
+
 class Playlist(models.Model):
     name = models.CharField(max_length=128, verbose_name=_('Name'))
     slug = models.SlugField(verbose_name=_('Slug'), unique=True)
@@ -134,6 +138,13 @@ class Playlist(models.Model):
     class Meta:
         ordering = ["name"]
 
+    def __str__(self):
+        return self.name
+
+    def get_items(self) -> list[dict[str, Any]]:
+        """Every entry as ``{url, duration}``, in playback order."""
+        return [entry.as_item() for entry in self.entries.select_related('view').order_by('order')]
+
 
 class PlaylistEntry(models.Model):
     playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, verbose_name=_('Playlist'), related_name='entries')
@@ -144,6 +155,23 @@ class PlaylistEntry(models.Model):
         help_text=_('Overrides the display duration of an item. (seconds) \n'
                     'If the item is a video and it\'s not set to loop, this setting will be ignored.')
     )
+
+    def __str__(self):
+        return f'{self.order}. {self.view}'
+
+    def get_duration(self) -> Optional[int]:
+        """Seconds to show this entry, or ``None`` to wait for it to report that it finished."""
+        view = self.view.get_specific()
+        if isinstance(view, VideoView) and view.plays_to_end:
+            return None
+        if self.display_duration:
+            return self.display_duration
+        if isinstance(view, ImageView):
+            return view.image.display_duration
+        return DEFAULT_DISPLAY_DURATION
+
+    def as_item(self) -> dict[str, Any]:
+        return {'url': self.view.get_absolute_url(), 'duration': self.get_duration()}
 
 
 class BaseView(models.Model):
@@ -274,8 +302,17 @@ class VideoView(BaseView):
             ),
         ]
 
+    @property
+    def plays_to_end(self) -> bool:
+        """Only a local, non-looping video stops on its own — streams and looping videos need a duration."""
+        return bool(self.video) and not self.video.loop
+
     def get_video_src(self) -> str:
-        return self.video_url or self.video.file.url
+        if self.video_url:
+            return self.video_url
+        if self.video and self.video.file:
+            return self.video.file.url
+        return ''
 
     def get_video_type(self):
         suffix = self.get_video_src().rsplit('.', 1)[-1]

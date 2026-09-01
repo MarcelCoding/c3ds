@@ -11,28 +11,38 @@ export default defineConfig({
       'es2020',
       'chrome70',
     ],
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          videojs: ['video.js'],
-        }
-      }
-    },
   },
+  assetsInclude: ['**/*.woff', '**/*.woff2', '**/*.otf', '**/*.ttf'],
   plugins: [
     vue(),
     djangoVitePlugin({
       input: [
         'c3ds/static/css/base.scss',
-        'core/ts/main.ts',
-        'core/ts/clock.ts',
-        'core/ts/schedule.ts',
-        'core/ts/remote_shell.ts',
-        'core/ts/remote_shell_backend.ts',
+        'c3ds/core/static/core/ts/main.ts',
+        'c3ds/core/static/core/ts/clock.ts',
+        'c3ds/core/static/core/ts/schedule.ts',
+        'c3ds/core/static/core/ts/playlist.ts',
+        'c3ds/core/static/core/ts/video.ts',
       ],
     }),
+    {
+      name: 'fix-css-urls',
+      transform(code) {
+        return code.replace(
+          /http:\/\/__django_vite_plugin_placeholder__\.protibimbok/g,
+          'http://127.0.0.1:5173'
+        );
+      },
+    },
   ],
   server: {
-    origin: 'http://127.0.0.1:5173',
+    host: '127.0.0.1',
+    port: 5173,
+    fs: {
+      allow: [
+        '/home/marcel/workspace/tmp/c3ds/src',
+        '/home/marcel/workspace/tmp/c3ds/src/c3ds',
+      ],
+    },
   }
 })

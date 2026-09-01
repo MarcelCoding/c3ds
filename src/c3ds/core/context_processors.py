@@ -2,8 +2,9 @@ from django.conf import settings
 
 
 def event_data(request):
+    day_zero = settings.DAY_ZERO
     return {'event': {
-        'day_zero': settings.DAY_ZERO.isoformat(),
+        'day_zero': day_zero.isoformat() if day_zero else None,
     }}
 
 def extra_data(request):

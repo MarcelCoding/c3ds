@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from c3ds.core.models import (Display, DisplayQuerySet, HTMLView, IFrameView, ImageFile, ImageView, Schedule,
+from c3ds.core.models import (Display, DisplayQuerySet, HTMLView, IFrameView, ImageFile, ImageView, Playlist, PlaylistEntry, Schedule,
                               ScheduleView, VideoFile, VideoView)
 
 class SlugLinkMixin():
@@ -28,8 +28,6 @@ class SlugLinkMixin():
 @admin.register(Display)
 class DisplayAdmin(admin.ModelAdmin, SlugLinkMixin):
     list_display = ['name', 'slug', 'static_view', 'playlist', 'link', 'c3nav', 'heartbeat']
-    if settings.REMOTE_SHELL:
-        list_display.append('shell')
     list_display.append('last_changed')
     slug_view = 'display_by_slug'
 
@@ -39,12 +37,6 @@ class DisplayAdmin(admin.ModelAdmin, SlugLinkMixin):
 
     def c3nav(self, obj):
         return mark_safe(f'<a href="{settings.C3NAV_BASE_URL}/l/{obj.slug.lower()}" target="_blank">map</a>')
-
-    def shell(self, obj):
-        if not settings.REMOTE_SHELL:
-            return ''
-        url = reverse('shell_by_slug', kwargs={'slug': obj.slug})
-        return mark_safe(f'<a href="{url}" target="_blank">shell</a>')
 
     def heartbeat(self, obj: Display):
         last = cache.get(obj.get_heartbeat_cache_key())
@@ -132,3 +124,18 @@ class ScheduleAdmin(admin.ModelAdmin):
 @admin.register(ScheduleView)
 class ScheduleViewAdmin(ViewAdmin):
     list_display = ('name', 'slug', 'title', 'layout_mode', 'schedule', 'room_filter', 'link', 'last_changed')
+
+
+class PlaylistEntryInline(admin.TabularInline):
+    model = PlaylistEntry
+    extra = 1
+    fields = ('view', 'order', 'display_duration')
+    ordering = ('order',)
+
+
+@admin.register(Playlist)
+class PlaylistAdmin(admin.ModelAdmin):
+    list_display = ('name', 'slug', 'last_changed')
+    fields = ('name', 'slug', 'last_changed')
+    readonly_fields = ('last_changed',)
+    inlines = [PlaylistEntryInline]

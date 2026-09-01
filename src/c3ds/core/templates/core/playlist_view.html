@@ -1,0 +1,6 @@
+{% extends "core/base.html" %}
+{% load vite %}
+{% block content %}
+    <div id="playlist" class="playlist" data-items='{{ playlist_json|default:"[]" }}'></div>
+    {% vite 'core/ts/playlist.ts' %}
+{% endblock %}
