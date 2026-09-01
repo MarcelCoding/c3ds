@@ -20,7 +20,7 @@ from c3ds.utils.environ import Env
 env = Env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-PROJECT_DIR = Path(__file__).resolve().parent.parent
+PROJECT_DIR = Path(__file__).parent.parent
 BASE_DIR = PROJECT_DIR.parent
 DATA_DIR = env.path('C3DS_DATA_DIR', default=BASE_DIR / 'data')
 MEDIA_ROOT = env.path('C3DS_MEDIA_ROOT', default=DATA_DIR / 'media')
