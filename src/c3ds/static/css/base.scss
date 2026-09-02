@@ -117,6 +117,26 @@ body {
   font-family: 'Horta', sans-serif;
 }
 
+.font-bold {
+  font-weight: bold;
+}
+
+.font-numbers {
+  font-variant-numeric: tabular-nums;
+}
+
+.text-muted {
+  color: var(--ds-muted);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
 .clock {
   font-family: 'GeneraleStation', sans-serif;
 }
@@ -321,38 +341,39 @@ body {
 * Unconfigured display
 */
 
-//.display-unconfigured {
-//  display: flex;
-//  flex-direction: column;
-//  justify-content: center;
-//  flex-grow: 1;
-//}
-//
-//.unconfigured-title {
-//  font-size: 6rem;
-//  letter-spacing: 0;
-//  text-align: center;
-//  margin: 1rem;
-//  font-family: 'Cabin', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-//}
-//
-//.unconfigured-slug,
-//.unconfigured-ip {
-//  font-size: 3.75rem;
-//  font-weight: bold;
-//  text-align: center;
-//  margin: 1rem;
-//  font-family: 'Cabin', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-//}
-//
-//.info-grid {
-//  display: grid;
-//  grid-template-columns: repeat(2, 1fr);
-//  gap: 1rem;
-//  font-size: 3rem;
-//  margin: 1rem;
-//}
-//
+.display-unconfigured {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  height: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.unconfigured-title {
+  font-family: 'GeneraleStation', sans-serif;
+  text-transform: uppercase;
+  color: var(--ds-magenta);
+  font-size: 5rem;
+}
+
+.unconfigured-slug,
+.unconfigured-ip {
+  font-family: 'GeneraleStation', sans-serif;
+  text-transform: uppercase;
+  font-size: 2.5rem;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  width: 100%;
+  max-width: 40rem;
+  font-size: 1.5rem;
+}
 .schedule-container {
   display: grid;
   grid-template-rows: 1fr min-content;

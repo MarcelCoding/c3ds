@@ -29,4 +29,15 @@ declare const window: Window & typeof globalThis & {
     }, 1000 - now.getMilliseconds())
   }
   update_time()
+})();
+
+(() => {
+  const resolutionElement = document.getElementById('screen-resolution')
+  if (resolutionElement === null) return
+
+  const update_resolution = () => {
+    resolutionElement.textContent = `Auflösung: ${window.innerWidth}x${window.innerHeight}`
+  }
+  update_resolution()
+  window.addEventListener('resize', update_resolution)
 })()

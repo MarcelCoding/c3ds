@@ -3,13 +3,13 @@
 {% block body_extra %}data-display-slug="{{ slug }}"{% endblock %}
 {% block content %}
     <div class="display-unconfigured">
-        <h1 class="unconfigured-title headline">{{ display_status|default:"Display nicht konfiguriert" }}</h1>
-        <h2 class="unconfigured-slug font-bold headline font-numbers">Slug: {{ slug }}</h2>
-        <h2 class="unconfigured-ip font-bold headline font-numbers">IP: {{ extra_data.ip_address }}</h2>
+        <h1 class="unconfigured-title">{{ display_status|default:"Nicht konfiguriert" }}</h1>
+        <h2 class="unconfigured-slug font-bold font-numbers">Slug: {{ slug }}</h2>
+        <h2 class="unconfigured-ip font-bold font-numbers">IP: {{ extra_data.ip_address }}</h2>
         <div class="info-grid text-muted">
             <p class="text-right" id="ntp-time-offset">Zeitabweichung: ???ms</p>
             <p class="" id="ntp-latency">Latenz: ???ms</p>
+            <p class="text-center" id="screen-resolution" style="grid-column: span 2">Auflösung: ???x???</p>
         </div>
-    <p class="text-center motto font-width-animated-wide" style="font-size: calc(9 * var(--px))">aufbrechen</p>
     </div>
 {% endblock %}
