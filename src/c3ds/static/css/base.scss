@@ -411,20 +411,41 @@ iframe {
   }
 }
 
+.mastodon-post-container {
+  height: 100%;
+  // fixed frame padding, kept outside the scaled box so it never shrinks
+  padding: 2rem;
+  overflow: hidden;
+}
+
 .mastodon-post {
   animation: fade-in-from-right 0.5s ease;
-  padding: 2rem;
+  // driven by the fit-to-container scaler; every length below is in em
+  font-size: 16px;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  &.image {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    align-items: center;
+    gap: 2em;
+  }
 
   .mastodon-post-header {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    gap: 1em;
   }
 
   .mastodon-avatar {
-    width: 8rem;
-    height: 8rem;
+    width: 8em;
+    height: 8em;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
@@ -433,51 +454,69 @@ iframe {
   .mastodon-account {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.25em;
     min-width: 0;
   }
 
   .mastodon-display-name {
-    font-size: 2rem;
+    font-size: 2em;
     font-weight: bold;
     color: var(--ds-white);
   }
 
   .mastodon-username {
-    font-size: 2rem;
+    font-size: 2em;
     color: var(--ds-muted);
   }
 
   .mastodon-time {
-    font-size: 2rem;
+    font-size: 2em;
     color: var(--ds-muted);
   }
 
   .mastodon-content-area {
     display: flex;
-    gap: 2rem;
-    align-items: center;
+    flex-direction: column;
+    gap: 1.5em;
+    min-width: 0;
   }
 
   .mastodon-media {
-    flex-shrink: 0;
-    width: 25rem;
+    align-self: stretch;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(0, 1fr);
+
+    // mastodon allows up to four attachments
+    &[data-count="2"] {
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+    }
+
+    &[data-count="3"],
+    &[data-count="4"] {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+    }
   }
 
   .mastodon-image {
     width: 100%;
-    max-height: 30rem;
-    object-fit: cover;
-    border-radius: 0.5rem;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    object-fit: contain;
+    border-radius: 0.5em;
   }
 
   .mastodon-content {
-    flex: 1;
     min-width: 0;
-    font-size: 2.5rem;
+    font-size: 2.5em;
     line-height: 1.6;
     color: var(--ds-white);
-    margin-bottom: 1.5rem;
+    overflow-wrap: break-word;
 
     a {
       color: var(--ds-magenta);
@@ -495,6 +534,7 @@ iframe {
     opacity: 0;
     transform: translateX(30px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
