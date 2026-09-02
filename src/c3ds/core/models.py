@@ -432,7 +432,7 @@ class MastodonPost(models.Model):
         latest_post = None
         latest_created_at = None
         for hashtag in self.get_hashtags():
-            url = f'https://fedi.buzz/api/v1/timelines/tag/{hashtag}?limit=1'
+            url = f'https://c3d2.social/api/v1/timelines/tag/{hashtag}?limit=1'
             try:
                 resp = req_lib.get(url, timeout=10)
                 resp.raise_for_status()
