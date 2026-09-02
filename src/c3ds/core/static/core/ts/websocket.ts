@@ -17,6 +17,7 @@ export class WebSocketClient {
   ws: WebSocket | null = null
   heartbeatInterval: number | null = null
   unansweredPings: number = 0
+  connectedBefore: boolean = false
   callbacks: {[key: string]: websocketMessageCallback} = Object()
 
   constructor(displaySlug: string, autoconnect: boolean) {
@@ -36,6 +37,11 @@ export class WebSocketClient {
       console.log('opening websocket');
       this.unansweredPings = 0
       this.startTimers()
+      if (this.connectedBefore) {
+        console.log('reconnected after server restart, reloading page')
+        window.location.reload()
+      }
+      this.connectedBefore = true
     }
     this.ws.onmessage = (e) => {
       const timeReceived = performance.now()

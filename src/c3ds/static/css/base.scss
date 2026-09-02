@@ -412,6 +412,7 @@ iframe {
 }
 
 .mastodon-post {
+  animation: fade-in-from-right 0.5s ease;
   padding: 2rem;
 
   .mastodon-post-header {
@@ -486,5 +487,16 @@ iframe {
         text-decoration: underline;
       }
     }
+  }
+}
+
+@keyframes fade-in-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }

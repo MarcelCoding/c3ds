@@ -36,6 +36,7 @@ const props = defineProps<{
 
 const formattedDate = ref('')
 const relativeTime = ref('')
+const visible = ref(false)
 
 const sanitizedContent = computed(() => {
   if (!props.postData?.content) return ''
@@ -71,28 +72,29 @@ function formatTime() {
 onMounted(() => {
   formatTime()
   setInterval(formatTime, 60000)
+  visible.value = true
 })
 </script>
 
 <template>
-  <div v-if="postData" class="mastodon-post">
+  <div v-show="visible && postData" class="mastodon-post">
     <div class="mastodon-post-header">
       <img 
-        :src="postData.account.avatar" 
-        :alt="postData.account.display_name"
+        :src="postData!.account.avatar" 
+        :alt="postData!.account.display_name"
         class="mastodon-avatar"
       />
       <div class="mastodon-account">
-        <span class="mastodon-display-name">{{ postData.account.display_name }}</span>
-        <span class="mastodon-username">@{{ postData.account.username }}</span>
+        <span class="mastodon-display-name">{{ postData!.account.display_name }}</span>
+        <span class="mastodon-username">@{{ postData!.account.username }}</span>
         <span class="mastodon-time">{{ relativeTime }}</span>
       </div>
     </div>
     <div class="mastodon-content-area">
       <div class="mastodon-content" v-html="sanitizedContent"></div>
-      <div v-if="postData.media_attachments?.length" class="mastodon-media">
+      <div v-if="postData!.media_attachments?.length" class="mastodon-media">
         <img 
-          v-for="media in postData.media_attachments.filter(m => m.type === 'image')" 
+          v-for="media in postData!.media_attachments.filter(m => m.type === 'image')" 
           :key="media.id"
           :src="media.url" 
           :alt="media.description || 'Image'"
