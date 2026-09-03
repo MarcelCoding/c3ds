@@ -1,5 +1,4 @@
 from django.core.management import BaseCommand
-from django.utils import timezone
 
 from c3ds.core.models import MastodonPost
 
@@ -9,11 +8,6 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--all',
-            action='store_true',
-            help='Fetch posts for all MastodonPost entries',
-        )
-        parser.add_argument(
             '--id',
             type=int,
             help='Fetch posts for specific MastodonPost entry ID',
@@ -22,12 +16,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options['id']:
             queryset = MastodonPost.objects.filter(pk=options['id'])
-        elif options['all']:
-            queryset = MastodonPost.objects.all()
         else:
-            queryset = MastodonPost.objects.filter(
-                last_fetched__lt=timezone.now() - timezone.timedelta(hours=1)
-            ) | MastodonPost.objects.filter(last_fetched__isnull=True)
+            queryset = MastodonPost.objects.all()
 
         if not queryset.exists():
             self.stdout.write(self.style.SUCCESS('No MastodonPost entries need fetching'))
