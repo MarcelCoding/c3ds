@@ -183,10 +183,10 @@ body {
   gap: 1rem;
 
   .track {
+    flex: 1;
     border-bottom-width: 0.6rem;
     border-bottom-style: solid;
     font-size: 1.5rem;
-    min-width: 5rem;
   }
 }
 
@@ -374,6 +374,7 @@ body {
   max-width: 40rem;
   font-size: 1.5rem;
 }
+
 .schedule-container {
   display: grid;
   grid-template-rows: 1fr min-content;
