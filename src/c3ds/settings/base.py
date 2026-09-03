@@ -28,6 +28,11 @@ STATIC_ROOT = env.path('C3DS_STATIC_ROOT', PROJECT_DIR / 'static.dist')
 
 ALLOWED_HOSTS = env.list('C3DS_ALLOWED_HOSTS', default=['*'])
 
+AUTHENTICATION_BACKENDS = [
+    'c3ds.core.oidc_backend.C3dsOIDCAuth',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -57,6 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'social_django.middleware.SocialAuthExceptionMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
@@ -186,10 +192,10 @@ USER_REGISTRATION = env.bool('C3DS_USER_REGISTRATION', default=False)
 INTERNAL_IPS = ('127.0.0.1', '::1')
 
 MESSAGE_TAGS = {
-    messages.INFO: 'alert-info',
-    messages.ERROR: 'alert-danger',
-    messages.WARNING: 'alert-warning',
-    messages.SUCCESS: 'alert-success',
+    messages.INFO: 'alert-info info',
+    messages.ERROR: 'alert-danger error',
+    messages.WARNING: 'alert-warning warning',
+    messages.SUCCESS: 'alert-success success',
 }
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
@@ -285,6 +291,7 @@ if DAY_ZERO:
 DELAYED_RELOAD_THRESHOLD = env.int('C3DS_DELAYED_RELOAD_THRESHOLD', default=10)
 
 # SSO
+SOCIAL_AUTH_LOGIN_ERROR_URL = '/admin/login/'
 SOCIAL_AUTH_PIPELINE = (
     ###################
     # Default pipelines
@@ -311,6 +318,8 @@ SOCIAL_AUTH_PIPELINE = (
     # Make up a username for this person, appends a random string at the end if
     # there's any collision.
     'social_core.pipeline.user.get_username',
+
+    'c3ds.core.sso.require_oidc_group',
 
     # Send a validation email to the user to verify its email address.
     # Disabled by default.
