@@ -486,6 +486,15 @@ iframe {
     color: var(--ds-white);
   }
 
+  // Custom emoji, sized off the surrounding text so they follow the auto-fit.
+  .mastodon-emoji {
+    display: inline-block;
+    height: 1.2em;
+    width: auto;
+    vertical-align: -0.25em;
+    object-fit: contain;
+  }
+
   .mastodon-username {
     font-size: 2em;
     color: var(--ds-muted);

@@ -44,12 +44,6 @@
       "@t:compressor/*": [
         "./../../../../../../nix/store/y1wcvim9aiaf71prbgi3a4g9f8m4gy8j-python3.13-django-compressor-4.6/lib/python3.13/site-packages/compressor/templates/compressor/*"
       ],
-      "@s:ninja/*": [
-        "./../../../../../../nix/store/2n2mj36d6skl2gwgbjhb8szxw1bjd3pp-python3.13-django-ninja-1.6.2/lib/python3.13/site-packages/ninja/static/ninja/*"
-      ],
-      "@t:ninja/*": [
-        "./../../../../../../nix/store/2n2mj36d6skl2gwgbjhb8szxw1bjd3pp-python3.13-django-ninja-1.6.2/lib/python3.13/site-packages/ninja/templates/ninja/*"
-      ],
       "@s:social_django/*": [
         "./../../../../../../nix/store/1lra5shhac1bq083whbc6mr8h21rz8ly-python3.13-social-auth-app-django-5.9.0/lib/python3.13/site-packages/social_django/static/social_django/*"
       ],
