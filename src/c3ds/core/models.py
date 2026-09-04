@@ -69,13 +69,17 @@ class Display(models.Model):
 
     @classmethod
     def reload_by_slug(cls, slug: str, delayed: bool = False):
-        async_to_sync(cls.async_reload_by_slug)(slug, delayed)
+        # A display re-reads the database the moment it gets this, so sending it from inside an open
+        # transaction (every admin change form is wrapped in one) would make it render the state from
+        # before the current save. Hold the command back until the data it should pick up is committed.
+        # Outside a transaction on_commit() runs the callback right away.
+        transaction.on_commit(lambda: async_to_sync(cls.async_reload_by_slug)(slug, delayed))
 
     async def async_reload(self, delayed: bool = False):
         await self.async_reload_by_slug(self.slug, delayed)
 
     def reload(self, delayed: bool = False):
-        async_to_sync(self.async_reload)(delayed)
+        self.reload_by_slug(self.slug, delayed)
 
     @staticmethod
     def heartbeat_cache_key_for_slug(slug: str) -> str:
