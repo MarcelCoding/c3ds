@@ -57,6 +57,11 @@ if (scheduleContainer !== null) {
       }
     })
   }
-  load_data()
-  window.setInterval(load_data, 5*60*1000)
+  if (schedule_url === '') {
+    // The Schedule has never been fetched yet; render empty instead of requesting the page itself.
+    console.warn('no schedule url configured, nothing to load')
+  } else {
+    load_data()
+    window.setInterval(load_data, 5*60*1000)
+  }
 }

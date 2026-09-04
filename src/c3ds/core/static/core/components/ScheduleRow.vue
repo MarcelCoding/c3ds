@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import {ProcessedEvent} from "../ts/schedule_types.ts";
-  import {computed, ComputedRef, onMounted, ref} from "vue";
+  import {computed, ComputedRef, onBeforeUnmount, onMounted, ref} from "vue";
   import {getCurrentTime} from "../ts/ntp.ts";
 
   const props = defineProps<{
@@ -23,16 +23,21 @@
     now.value = getCurrentTime()
   }
   let lastClockTick: number|undefined = undefined
+  let animationFrame: number | undefined = undefined
   function animation_callback(timestamp: number) {
     // limit the clock tick to 10 FPS
     if (lastClockTick === undefined || (timestamp - lastClockTick) > 100) {
       clock_tick()
       lastClockTick = timestamp
     }
-    window.requestAnimationFrame(animation_callback)
+    animationFrame = window.requestAnimationFrame(animation_callback)
   }
   onMounted(() => {
-    window.requestAnimationFrame(animation_callback)
+    animationFrame = window.requestAnimationFrame(animation_callback)
+  })
+  onBeforeUnmount(() => {
+    // Rows are unmounted as talks end; without this every one of them leaks a frame loop.
+    if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame)
   })
 </script>
 

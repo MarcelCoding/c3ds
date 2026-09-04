@@ -17,22 +17,17 @@
                 deps = with pkgs; [
                 ];
                 pythonDeps = with pkgs.python3Packages; [
-      celery
       channels-redis
       channels
       csscompressor
       daphne
       django-compressor
       django-environ
-      django-filter
       django-libsass
-      django-ninja
       django-vite-plugin
       django
       hiredis
-      pillow
       psycopg
-      qrcode
       redis
       requests
       social-auth-app-django

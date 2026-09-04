@@ -127,6 +127,9 @@ class VideoFile(MediaFile):
 #: Fallback for entries that neither carry a duration nor end on their own.
 DEFAULT_DISPLAY_DURATION = 30
 
+#: Seconds to wait on the upstream schedule server; the fetch holds a row lock while it runs.
+SCHEDULE_FETCH_TIMEOUT = 10
+
 
 class Playlist(models.Model):
     name = models.CharField(max_length=128, verbose_name=_('Name'))
@@ -184,6 +187,8 @@ class BaseView(models.Model):
     view = None
     template_name = None
     vue_module = None
+    #: Set on views that pick new content per request, so their responses are never cached.
+    varies_per_request = False
 
     class LayoutModes(models.TextChoices):
         NORMAL = 'normal', _('Normal')
@@ -341,7 +346,7 @@ class Schedule(models.Model):
     url = models.URLField(verbose_name=_('URL'))
     version = models.CharField(max_length=256, verbose_name=_('Version'), editable=False, null=True, blank=True)
     etag = models.CharField(max_length=256, verbose_name='ETag', editable=False, null=True, blank=True)
-    file = models.FileField(verbose_name=_('File'), upload_to='schedule/', null=True, blank=True)
+    file = models.FileField(verbose_name=_('File'), upload_to='schedules/', null=True, blank=True)
     last_changed = models.DateTimeField(verbose_name=_('Last Changed'), auto_now=True)
     created_at = models.DateTimeField(verbose_name=_('Created At'), auto_now_add=True)
 
@@ -369,7 +374,7 @@ class Schedule(models.Model):
                 'Accept': 'application/json',
                 'If-None-Match': self.etag,
                 'If-Modified-Since': None if self.etag else file_time
-            })
+            }, timeout=SCHEDULE_FETCH_TIMEOUT)
             if not force and req.status_code == 304:
                 logger.info('Not updating schedule "%s" [%d], unchanged. (304)', self.name, self.pk)
                 return
@@ -390,7 +395,10 @@ class Schedule(models.Model):
             logger.info('Updated schedule "%s" [%d]: %s → %s', self.name, self.pk, old_version, new_version)
 
     @property
-    def local_url(self):
+    def local_url(self) -> str:
+        """URL of the cached schedule, or '' while it has never been fetched."""
+        if not self.file:
+            return ''
         return self.file.url
 
 
@@ -495,6 +503,8 @@ class MastodonPost(models.Model):
 class MastodonPostView(BaseView):
     template_name = 'core/mastodon_post_view.html'
     vue_module = 'MastodonPostView'
+    # get_context() picks a different post per request.
+    varies_per_request = True
     mastodon_post = models.ForeignKey(MastodonPost, on_delete=models.PROTECT, verbose_name=_('Mastodon Post'))
     refresh_interval = models.PositiveIntegerField(verbose_name=_('Refresh Interval'), default=60,
                                                    help_text=_('Refresh interval in seconds'))
@@ -513,6 +523,7 @@ class RandomView(BaseView):
     #: Only rendered when nothing can be picked; normally a target's own template is used.
     template_name = 'core/random_view.html'
     vue_module = 'RandomView'
+    varies_per_request = True
     targets = models.ManyToManyField(BaseView, verbose_name=_('Views'), blank=True,
                                      related_name='random_views',
                                      help_text=_('One of these is picked at random every time '

@@ -2,6 +2,7 @@ import datetime
 
 import channels.layers
 from asgiref.sync import async_to_sync
+from django import forms
 from django.conf import settings
 from django.contrib import admin
 from django.core.cache import cache
@@ -12,9 +13,9 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from c3ds.core.models import (BaseView, Display, DisplayQuerySet, HTMLView, IFrameView, ImageFile, ImageView, Playlist,
-                              PlaylistEntry, RandomView, Schedule, ScheduleView, MastodonPost, MastodonPostView,
-                              VideoFile, VideoView)
+from c3ds.core.models import (BaseView, DEFAULT_DISPLAY_DURATION, Display, DisplayQuerySet, HTMLView, IFrameView,
+                              ImageFile, ImageView, Playlist, PlaylistEntry, RandomView, Schedule, ScheduleView,
+                              MastodonPost, MastodonPostView, VideoFile, VideoView)
 
 class SlugLinkMixin():
     slug_view = 'view_by_slug'
@@ -167,8 +168,21 @@ class RandomViewAdmin(ViewAdmin):
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
+class PlaylistEntryForm(forms.ModelForm):
+    class Meta:
+        model = PlaylistEntry
+        fields = ('view', 'order', 'display_duration')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The model keeps this nullable for historic rows, but a new entry must spell its duration out.
+        self.fields['display_duration'].required = True
+        self.fields['display_duration'].initial = DEFAULT_DISPLAY_DURATION
+
+
 class PlaylistEntryInline(admin.TabularInline):
     model = PlaylistEntry
+    form = PlaylistEntryForm
     extra = 1
     fields = ('view', 'order', 'display_duration')
     ordering = ('order',)

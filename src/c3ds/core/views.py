@@ -31,8 +31,9 @@ class GenericView(DetailView):
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
-        if self.proxy_source is not None:
-            # A proxy picks anew per request, so the response must never be cached.
+        view = getattr(self, 'object', None)
+        if self.proxy_source is not None or getattr(view, 'varies_per_request', False):
+            # These pick new content per request, so the response must never be cached.
             add_never_cache_headers(response)
         return response
 
