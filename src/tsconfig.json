@@ -38,12 +38,6 @@
       ],
       "@t:social_django/*": [
         "./../env/lib/python3.13/site-packages/social_django/templates/social_django/*"
-      ],
-      "@s:django_prometheus/*": [
-        "./../env/lib/python3.13/site-packages/django_prometheus/static/django_prometheus/*"
-      ],
-      "@t:django_prometheus/*": [
-        "./../env/lib/python3.13/site-packages/django_prometheus/templates/django_prometheus/*"
       ]
     }
   }

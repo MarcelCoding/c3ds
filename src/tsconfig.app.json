@@ -55,12 +55,6 @@
       ],
       "@t:social_django/*": [
         "./../../../../../../nix/store/1lra5shhac1bq083whbc6mr8h21rz8ly-python3.13-social-auth-app-django-5.9.0/lib/python3.13/site-packages/social_django/templates/social_django/*"
-      ],
-      "@s:django_prometheus/*": [
-        "./../../../../../../nix/store/cdpn02dwjsj3igs8k616z5qnlljir8yi-python3.13-django-prometheus-2.4.1/lib/python3.13/site-packages/django_prometheus/static/django_prometheus/*"
-      ],
-      "@t:django_prometheus/*": [
-        "./../../../../../../nix/store/cdpn02dwjsj3igs8k616z5qnlljir8yi-python3.13-django-prometheus-2.4.1/lib/python3.13/site-packages/django_prometheus/templates/django_prometheus/*"
       ]
     }
   },

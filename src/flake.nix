@@ -27,12 +27,10 @@
       django-filter
       django-libsass
       django-ninja
-      django-prometheus
       django-vite-plugin
       django
       hiredis
       pillow
-      prometheus-client
       psycopg
       qrcode
       redis
