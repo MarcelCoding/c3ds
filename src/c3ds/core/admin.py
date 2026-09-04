@@ -1,7 +1,5 @@
 import datetime
 
-import channels.layers
-from asgiref.sync import async_to_sync
 from django import forms
 from django.conf import settings
 from django.contrib import admin
@@ -13,6 +11,7 @@ from django.utils.translation import gettext_lazy as _
 
 from c3ds.core.models import (BaseView, DEFAULT_DISPLAY_DURATION, Display, DisplayQuerySet, HTMLView, IFrameView,
                               ImageFile, ImageView, Playlist, PlaylistEntry, RandomView, Schedule, ScheduleView,
+                              displays_showing,
                               MastodonPost, MastodonPostView, VideoFile, VideoView)
 
 class SlugLinkMixin():
@@ -67,8 +66,7 @@ class ViewAdmin(admin.ModelAdmin, SlugLinkMixin):
     def reload(self, request: HttpRequest, queryset):
         # A view reaches a display through a playlist or a proxy too, and two of the selected
         # views can end up on the same display - collect the displays before reloading them.
-        display_ids = {pk for view in queryset for pk in view.get_displays().values_list('pk', flat=True)}
-        Display.objects.filter(pk__in=display_ids).reload()
+        displays_showing(queryset).reload()
 
 
 @admin.register(HTMLView)

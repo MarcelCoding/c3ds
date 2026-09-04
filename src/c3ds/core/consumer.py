@@ -7,6 +7,7 @@ from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
 from django.core.cache import cache
 
+from c3ds.core.enums import DisplayCommands
 from c3ds.core.models import Display
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class DisplayConsumer(WebsocketConsumer):
                 if not self.scope['user'].is_authenticated:
                     cache.set(Display.heartbeat_cache_key_for_slug(self.display_slug), datetime.now(tz=UTC), None)
                 self.cmd({'cmd': 'pong'})
+                self.check_content_version(data.get('version'))
 
             case 'NTPRequest':
                 try:
@@ -56,6 +58,24 @@ class DisplayConsumer(WebsocketConsumer):
                                 data['ntpOffset'], data['ntpLatency'])
                 except KeyError:
                     logger.error('Received invalid NTPReport')
+
+    def check_content_version(self, version):
+        """Reload a display that is rendering an older revision than the database holds.
+
+        Reload commands only reach whoever is in the channel group at the time, so one sent while
+        a display was reloading is gone for good. This is how it finds out.
+        """
+        if version is None:
+            return
+        try:
+            display = Display.objects.get(slug=self.display_slug)
+        except Display.DoesNotExist:
+            return
+        current = display.get_content_version()
+        if current != version:
+            logger.info('Display "%s" reports version %r, current is %r - telling it to reload',
+                        self.display_slug, version, current)
+            self.cmd({'cmd': DisplayCommands.RELOAD, 'delayed': False})
 
     def cmd(self, event):
         # Receive message from display group

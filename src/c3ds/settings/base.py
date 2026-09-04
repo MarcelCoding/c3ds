@@ -227,13 +227,11 @@ CACHES = {
         'LOCATION': 'unique-snowflake',
     }
 }
-HAS_REAL_CACHE = False
 
 HAS_REDIS = bool(env.str('C3DS_REDIS', default=None))
 REDIS_CONNECTION_POOL = None
 if HAS_REDIS:
     import redis
-    HAS_REAL_CACHE = True
     REDIS_SERVERS = env.list('C3DS_REDIS')
     CACHES['default'] = {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",

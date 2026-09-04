@@ -12,7 +12,7 @@
     {% endcompress %}
     <title>{% block title %}c3ds{% block title-extra %}{% endblock %}{% endblock %}</title>
 </head>
-<body class="layout-{{ layout_mode|default:'normal' }} {% block body_class %}{% endblock %}" {% block body_extra %}{% endblock %}{% if display %}data-display-slug="{{ display.slug }}"{% endif %}>
+<body class="layout-{{ layout_mode|default:'normal' }} {% block body_class %}{% endblock %}" {% block body_extra %}{% endblock %}{% if display %}data-display-slug="{{ display.slug }}" data-content-version="{{ display_version|default:'' }}"{% endif %}>
 {% block body %}
     {% if layout_mode|default:'normal' != 'fullscreen' %}
         <div class="frame layout-frame">

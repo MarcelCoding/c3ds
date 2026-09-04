@@ -16,4 +16,13 @@ if (container !== null) {
   createApp(MastodonPostView, {
     postData
   }).mount('div.mastodon-post-container')
+
+  // The server picks a post per request, so re-requesting the view is what rotates it.
+  // Jittered by a tenth: displays that reloaded together would otherwise come back in
+  // lockstep, every interval, for as long as they run.
+  const refreshInterval = Number(container.dataset['refreshInterval'])
+  if (Number.isFinite(refreshInterval) && refreshInterval > 0) {
+    const delay = refreshInterval * 1000 * (0.9 + 0.2 * Math.random())
+    window.setTimeout(() => window.location.reload(), delay)
+  }
 }

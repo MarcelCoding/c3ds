@@ -12,20 +12,46 @@ export interface ReloadWebSocketCommand extends ReceivedWebSocketCommand {
 
 export interface websocketMessageCallback { (cmd: ReceivedWebSocketCommand): void }
 
+/** Window a delayed reload is scattered over, so a fleet of displays does not arrive at once. */
+const RELOAD_SPREAD_MS = 20 * 1000
+
 export class WebSocketClient {
   displaySlug: string
+  /** Revision this page was rendered from; echoed on every ping so the server can spot a miss. */
+  contentVersion: string | null
   ws: WebSocket | null = null
   heartbeatInterval: number | null = null
   unansweredPings: number = 0
   connectedBefore: boolean = false
+  reloadTimer: number | null = null
+  reloadDelayed: boolean = false
   callbacks: {[key: string]: websocketMessageCallback} = Object()
 
-  constructor(displaySlug: string, autoconnect: boolean) {
+  constructor(displaySlug: string, autoconnect: boolean, contentVersion: string | null = null) {
     if (displaySlug === undefined || displaySlug == null) {
       throw Error('display slug missing')
     }
     this.displaySlug = displaySlug
+    this.contentVersion = contentVersion
     if (autoconnect) this.connect()
+  }
+
+  /**
+   * A single edit sends one command per affected row, so several arrive for one save.
+   * Repeats are ignored rather than rescheduled: drawing a fresh delay for each one and
+   * letting the earliest win would collapse the spread back to nothing. An immediate
+   * command still overtakes a reload that is merely scheduled.
+   */
+  reload(delayed: boolean = false) {
+    const scheduled = this.reloadTimer !== null
+    if (scheduled && !(this.reloadDelayed && !delayed)) return
+    if (scheduled) window.clearTimeout(this.reloadTimer!)
+    const timeout = delayed ? RELOAD_SPREAD_MS * Math.random() : 0
+    this.reloadDelayed = delayed
+    console.log(`reloading in ${timeout / 1000} seconds`)
+    this.reloadTimer = window.setTimeout(() => {
+      window.location.reload()
+    }, timeout)
   }
 
   connect() {
@@ -38,10 +64,16 @@ export class WebSocketClient {
       this.unansweredPings = 0
       this.startTimers()
       if (this.connectedBefore) {
+        // Every display reconnects at once after a restart, so spread these out: a server that
+        // has just come back up is the worst moment to send the whole fleet at it together.
         console.log('reconnected after server restart, reloading page')
-        window.location.reload()
+        this.reload(true)
+        return
       }
       this.connectedBefore = true
+      // Straight away rather than at the first interval: the reply also says whether a reload
+      // command went out while this page was loading, when no socket was there to receive it.
+      this.sendPing()
     }
     this.ws.onmessage = (e) => {
       const timeReceived = performance.now()
@@ -51,16 +83,7 @@ export class WebSocketClient {
 
       switch (data?.cmd) {
         case 'reload':
-          if ((data as ReloadWebSocketCommand).delayed) {
-            const timeout = 20 * 1000 * Math.random()
-            console.log(`received reload command, reloading in ${timeout/1000} seconds!`)
-            window.setTimeout(() => {
-              window.location.reload()
-            }, timeout)
-          } else {
-            console.log('received reload command, reloading NOW!')
-            window.location.reload()
-          }
+          this.reload((data as ReloadWebSocketCommand).delayed === true)
           break;
 
         case 'pong':
@@ -103,9 +126,12 @@ export class WebSocketClient {
   sendPing() {
     console.log('sending ping')
     this.unansweredPings += 1
-    if (this.unansweredPings > 30) window.location.reload()  // reload if we didn't get a pong for 300 sec
+    // No pong for 300 sec. Every display loses the server at the same moment, so spread the
+    // reloads rather than have the whole fleet hit it the instant it answers again.
+    if (this.unansweredPings > 30) this.reload(true)
     this.ws?.send(JSON.stringify({
-      cmd: 'ping'
+      cmd: 'ping',
+      version: this.contentVersion,
     }))
   }
 

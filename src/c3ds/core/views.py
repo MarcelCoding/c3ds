@@ -114,6 +114,9 @@ class DisplayView(DetailView):
         if view is not None:
             ctx.update(view.get_context())
 
+        if self.object is not None:
+            ctx['display_version'] = self.object.get_content_version()
+
         if self.object is not None and self.object.playlist is not None:
             ctx['playlist_json'] = json.dumps(self.object.playlist.get_items())
 

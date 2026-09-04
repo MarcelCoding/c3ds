@@ -17,6 +17,7 @@ from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 from c3ds.core.enums import DisplayCommands
+from c3ds.utils.filesystem import check_directory
 
 logger = logging.getLogger(__name__)
 channel_layer = channels.layers.get_channel_layer()
@@ -39,6 +40,8 @@ class Display(models.Model):
     playlist = models.ForeignKey('Playlist', on_delete=models.PROTECT, verbose_name=_('Playlist'), null=True, blank=True)
     last_changed = models.DateTimeField(verbose_name=_('Last Changed'), auto_now=True)
     created_at = models.DateTimeField(verbose_name=_('Created At'), auto_now_add=True)
+    #: Bumped every time a reload goes out, so a display can tell whether it missed one.
+    last_reloaded_at = models.DateTimeField(verbose_name=_('Last Reloaded At'), null=True, editable=False)
 
     objects = DisplayQuerySet.as_manager()
 
@@ -58,6 +61,24 @@ class Display(models.Model):
         return self.name
 
     @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        # Kept so a rename can also reach the display still listening on the old slug.
+        instance.loaded_slug = instance.slug
+        return instance
+
+    def get_content_version(self) -> str:
+        """Token for the revision this display should be showing.
+
+        The page renders it and the display sends it back on every ping, which is how a display
+        that was reloading - and therefore not in the channel group - finds out that it missed a
+        reload command. Commands are fire-and-forget, nothing else would ever tell it.
+        """
+        if self.last_reloaded_at is None:
+            return ''
+        return str(int(self.last_reloaded_at.timestamp() * 1_000_000))
+
+    @classmethod
     async def async_reload_by_slug(cls, slug: str, delayed: bool = False):
         await channel_layer.group_send(f'display_{slug}', {
             'type': 'cmd',
@@ -73,10 +94,10 @@ class Display(models.Model):
         # transaction (every admin change form is wrapped in one) would make it render the state from
         # before the current save. Hold the command back until the data it should pick up is committed.
         # Outside a transaction on_commit() runs the callback right away.
+        # Stamped inside the transaction so a page rendered after the commit already carries the
+        # new version - a display that misses the command below then notices on its next ping.
+        cls.objects.filter(slug=slug).update(last_reloaded_at=datetime.datetime.now(tz=datetime.UTC))
         transaction.on_commit(lambda: async_to_sync(cls.async_reload_by_slug)(slug, delayed))
-
-    async def async_reload(self, delayed: bool = False):
-        await self.async_reload_by_slug(self.slug, delayed)
 
     def reload(self, delayed: bool = False):
         self.reload_by_slug(self.slug, delayed)
@@ -185,6 +206,12 @@ class PlaylistEntry(models.Model):
 
 #: How deep a chain of proxy views may nest before we give up.
 MAX_VIEW_RESOLVE_DEPTH = 5
+
+
+def displays_showing(views) -> DisplayQuerySet:
+    """Every display showing any of ``views``, each display listed once."""
+    display_ids = {pk for view in views for pk in view.get_displays().values_list('pk', flat=True)}
+    return Display.objects.filter(pk__in=display_ids)
 
 
 class BaseView(models.Model):
@@ -381,31 +408,34 @@ class Schedule(models.Model):
     def update_schedule(self, force: bool = False):
         if self.pk is None:
             raise ValueError('Save model first')
-        # start transaction and lock
+        file_time = None
+        if self.file:
+            with suppress(FileNotFoundError):
+                file_time = datetime.datetime.fromtimestamp(Path(self.file.path).stat().st_mtime, datetime.UTC)\
+                    .strftime('%a, %d %b %Y %H:%M:%S GMT')
+        # Fetched before the transaction opens: the request may take SCHEDULE_FETCH_TIMEOUT seconds
+        # and holding a row lock - and on SQLite the whole database - for that long blocks everyone.
+        req = requests.get(self.url, headers={
+            'Accept': 'application/json',
+            'If-None-Match': self.etag,
+            'If-Modified-Since': None if self.etag else file_time
+        }, timeout=SCHEDULE_FETCH_TIMEOUT)
+        if not force and req.status_code == 304:
+            logger.info('Not updating schedule "%s" [%d], unchanged. (304)', self.name, self.pk)
+            return
+        req.raise_for_status()
+        new_version = req.json()['schedule']['version']
         with transaction.atomic():
-            obj = Schedule.objects.select_for_update().get(pk=self.pk)
-            file_time = None
-            if self.file:
-                with suppress(FileNotFoundError):
-                    file_time = datetime.datetime.fromtimestamp(Path(self.file.path).stat().st_mtime, datetime.UTC)\
-                        .strftime('%a, %d %b %Y %H:%M:%S GMT')
-            req = requests.get(self.url, headers={
-                'Accept': 'application/json',
-                'If-None-Match': self.etag,
-                'If-Modified-Since': None if self.etag else file_time
-            }, timeout=SCHEDULE_FETCH_TIMEOUT)
-            if not force and req.status_code == 304:
-                logger.info('Not updating schedule "%s" [%d], unchanged. (304)', self.name, self.pk)
-                return
-            req.raise_for_status()
-            data = req.json()
-            old_version = self.version
-            new_version = data['schedule']['version']
-            if not force and self.version and self.version == new_version:
+            # Re-read under the lock: another fetch may have stored this version while we waited.
+            old_version = Schedule.objects.select_for_update().get(pk=self.pk).version
+            if not force and old_version and old_version == new_version:
                 logger.info('Not updating schedule "%s" [%d], unchanged. (Version)', self.name, self.pk)
                 return
             if not self.file.name:
                 self.file.name = f'schedules/schedule-{self.uuid}.json'
+            # Opening the file for writing does not create its directory, and on a fresh install
+            # nothing has created the schedules one yet.
+            check_directory(Path(self.file.path).parent, parents=True)
             with self.file.open('wb') as fp:
                 fp.write(req.content)
             self.etag = req.headers.get('ETag', None)
