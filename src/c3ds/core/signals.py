@@ -16,7 +16,8 @@ def display_saved_handler(sender: Display, instance: Display, created: bool, upd
 def view_saved_handler(sender: BaseView, instance: BaseView = None, created: bool = None, updated_fields=None, **kwargs):
     if not isinstance(instance, BaseView):
         return
-    instance.displays.reload()
+    # Not instance.displays - that only covers displays showing it as their static view.
+    instance.get_displays().reload()
 
 
 @receiver(post_save, sender=Playlist)

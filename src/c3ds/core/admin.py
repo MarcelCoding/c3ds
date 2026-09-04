@@ -6,8 +6,6 @@ from django import forms
 from django.conf import settings
 from django.contrib import admin
 from django.core.cache import cache
-from django.db import models
-from django.db.models import functions
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils.safestring import mark_safe
@@ -67,11 +65,10 @@ class ViewAdmin(admin.ModelAdmin, SlugLinkMixin):
 
     @admin.action(description=_('Reload Assigned Display(s)'))
     def reload(self, request: HttpRequest, queryset):
-        num_displays = queryset.annotate(num_displays = functions.Coalesce(models.Count('displays'), 0))\
-            .aggregate(num_displays=models.Sum('num_displays', default=0))['num_displays']
-        delayed = num_displays > settings.DELAYED_RELOAD_THRESHOLD
-        for view in queryset.all():
-            view.displays.reload(delayed)
+        # A view reaches a display through a playlist or a proxy too, and two of the selected
+        # views can end up on the same display - collect the displays before reloading them.
+        display_ids = {pk for view in queryset for pk in view.get_displays().values_list('pk', flat=True)}
+        Display.objects.filter(pk__in=display_ids).reload()
 
 
 @admin.register(HTMLView)

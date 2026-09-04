@@ -243,6 +243,21 @@ class BaseView(models.Model):
         """The view actually rendered for this one. Proxies override this to pick a target."""
         return self
 
+    def get_displays(self) -> 'DisplayQuerySet':
+        """Every display showing this view: as its static view, through a playlist, or behind a proxy."""
+        shown_by = {self.pk}
+        frontier = shown_by
+        # A proxy renders one of its targets, so a display showing the proxy also shows this view.
+        for _ in range(MAX_VIEW_RESOLVE_DEPTH):
+            frontier = set(RandomView.objects.filter(targets__in=frontier)
+                           .exclude(pk__in=shown_by).values_list('pk', flat=True))
+            if not frontier:
+                break
+            shown_by |= frontier
+        return Display.objects.filter(
+            Q(static_view__in=shown_by) | Q(playlist__entries__view__in=shown_by)
+        ).distinct()
+
     def get_absolute_url(self):
         from django.urls import reverse
 
