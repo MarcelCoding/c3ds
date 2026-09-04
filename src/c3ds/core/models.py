@@ -176,6 +176,10 @@ class PlaylistEntry(models.Model):
         return {'url': self.view.get_absolute_url(), 'duration': self.get_duration()}
 
 
+#: How deep a chain of proxy views may nest before we give up.
+MAX_VIEW_RESOLVE_DEPTH = 5
+
+
 class BaseView(models.Model):
     view = None
     template_name = None
@@ -225,6 +229,10 @@ class BaseView(models.Model):
             with suppress(ObjectDoesNotExist):
                 return getattr(self, field.accessor_name)
         return None
+
+    def resolve(self, _depth: int = 0) -> Optional['BaseView']:
+        """The view actually rendered for this one. Proxies override this to pick a target."""
+        return self
 
     def get_absolute_url(self):
         from django.urls import reverse
@@ -499,3 +507,37 @@ class MastodonPostView(BaseView):
 
     def get_context(self) -> dict[str, Any]:
         return {'post_data': self.mastodon_post.get_post_to_display()}
+
+
+class RandomView(BaseView):
+    #: Only rendered when nothing can be picked; normally a target's own template is used.
+    template_name = 'core/random_view.html'
+    vue_module = 'RandomView'
+    targets = models.ManyToManyField(BaseView, verbose_name=_('Views'), blank=True,
+                                     related_name='random_views',
+                                     help_text=_('One of these is picked at random every time '
+                                                 'this view is shown.'))
+
+    class Meta:
+        verbose_name = _('Random View')
+        verbose_name_plural = _('Random Views')
+        default_related_name = 'random_views_set'
+        ordering = ["name"]
+
+    def save(self, *args, **kwargs):
+        # Not editable: the picked view brings its own, and the empty fallback should stay blank.
+        self.layout_mode = self.LayoutModes.FULLSCREEN
+        super().save(*args, **kwargs)
+
+    def resolve(self, _depth: int = 0) -> Optional[BaseView]:
+        if _depth >= MAX_VIEW_RESOLVE_DEPTH:
+            logger.warning('Random View "%s" [%d] nests deeper than %d levels, showing nothing',
+                           self.name, self.pk, MAX_VIEW_RESOLVE_DEPTH)
+            return None
+        # A view pointing at itself would recurse forever.
+        candidates = [view for view in self.targets.all() if view.pk != self.pk]
+        if not candidates:
+            logger.warning('Random View "%s" [%d] has no views to pick from', self.name, self.pk)
+            return None
+        chosen = random.choice(candidates).get_specific()
+        return chosen.resolve(_depth + 1) if chosen is not None else None

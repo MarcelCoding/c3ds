@@ -12,8 +12,9 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from c3ds.core.models import (Display, DisplayQuerySet, HTMLView, IFrameView, ImageFile, ImageView, Playlist, PlaylistEntry, Schedule,
-                              ScheduleView, MastodonPost, MastodonPostView, VideoFile, VideoView)
+from c3ds.core.models import (BaseView, Display, DisplayQuerySet, HTMLView, IFrameView, ImageFile, ImageView, Playlist,
+                              PlaylistEntry, RandomView, Schedule, ScheduleView, MastodonPost, MastodonPostView,
+                              VideoFile, VideoView)
 
 class SlugLinkMixin():
     slug_view = 'view_by_slug'
@@ -145,6 +146,25 @@ class MastodonPostAdmin(admin.ModelAdmin):
 @admin.register(MastodonPostView)
 class MastodonPostViewAdmin(ViewAdmin):
     list_display = ('name', 'slug', 'title', 'layout_mode', 'mastodon_post', 'link', 'last_changed')
+
+
+@admin.register(RandomView)
+class RandomViewAdmin(ViewAdmin):
+    list_display = ('name', 'slug', 'target_count', 'link', 'last_changed')
+    # The picked view brings its own title and layout along, these would never be rendered.
+    exclude = ('title', 'layout_mode')
+    filter_horizontal = ('targets',)
+
+    @admin.display(description=_('Views'))
+    def target_count(self, obj: RandomView):
+        return obj.targets.count()
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        # A view picking itself would never resolve, so do not offer it.
+        object_id = request.resolver_match.kwargs.get('object_id')
+        if db_field.name == 'targets' and object_id:
+            kwargs['queryset'] = BaseView.objects.exclude(pk=object_id)
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
 class PlaylistEntryInline(admin.TabularInline):

@@ -6,7 +6,8 @@ from django.core.cache import cache
 from prometheus_client.core import GaugeMetricFamily, REGISTRY
 from prometheus_client.registry import Collector
 
-from c3ds.core.models import Display, BaseView, HTMLView, ImageView, VideoView, IFrameView, ScheduleView
+from c3ds.core.models import (Display, BaseView, HTMLView, ImageView, VideoView, IFrameView, RandomView,
+                              ScheduleView)
 
 
 class CustomCollector(Collector):
@@ -49,6 +50,7 @@ class CustomCollector(Collector):
         view_count.add_metric(['video'], VideoView.objects.all().count())
         view_count.add_metric(['iframe'], IFrameView.objects.all().count())
         view_count.add_metric(['schedule'], ScheduleView.objects.all().count())
+        view_count.add_metric(['random'], RandomView.objects.all().count())
         yield view_count
         yield GaugeMetricFamily('number_of_views_total', 'Number of views configured',
                                 value=BaseView.objects.all().count())

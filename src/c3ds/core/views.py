@@ -2,6 +2,7 @@ import json
 from typing import Optional
 
 from django.http import Http404
+from django.utils.cache import add_never_cache_headers
 from django.utils.decorators import method_decorator
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import DetailView
@@ -14,10 +15,26 @@ from c3ds.core.models import BaseView, Display
 class GenericView(DetailView):
     model = BaseView
     context_object_name = 'view'
+    #: Set when the requested view delegated rendering to another one.
+    proxy_source: Optional[BaseView] = None
 
     def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        return obj.get_specific()
+        obj = super().get_object(queryset).get_specific()
+        resolved = obj.resolve()
+        if resolved is None:
+            # Nothing to delegate to - render the proxy itself, which falls back to an empty slide.
+            self.proxy_source = obj
+            return obj
+        if resolved is not obj:
+            self.proxy_source = obj
+        return resolved
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if self.proxy_source is not None:
+            # A proxy picks anew per request, so the response must never be cached.
+            add_never_cache_headers(response)
+        return response
 
     def get_template_names(self):
         return [self.object.get_template_name()]
@@ -73,7 +90,9 @@ class DisplayView(DetailView):
         if self.object.static_view is None:
             return None
         if self._view is None:
-            self._view = self.object.static_view.get_specific()
+            specific = self.object.static_view.get_specific()
+            # An unresolvable proxy falls back to rendering itself, so we always have a view here.
+            self._view = specific.resolve() or specific
         return self._view
 
     def get_layout_mode(self):
