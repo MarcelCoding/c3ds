@@ -1,9 +1,11 @@
 import datetime
 import logging
+import random
 import uuid
 from contextlib import suppress
 from pathlib import Path
 from typing import Optional, Self, Any
+from urllib.parse import quote
 
 import channels.layers
 import requests
@@ -402,12 +404,26 @@ class ScheduleView(BaseView):
         ordering = ["name"]
 
 
+def mastodon_created_at(post: dict[str, Any]) -> datetime.datetime:
+    """``created_at`` of a Mastodon API post as an aware datetime; unparseable values sort last."""
+    try:
+        created_at = datetime.datetime.fromisoformat(post['created_at'])
+    except (KeyError, TypeError, ValueError):
+        return datetime.datetime.min.replace(tzinfo=datetime.UTC)
+    return created_at if created_at.tzinfo is not None else created_at.replace(tzinfo=datetime.UTC)
+
+
 class MastodonPost(models.Model):
     name = models.CharField(max_length=128, verbose_name=_('Name'))
     uuid = models.UUIDField(verbose_name=_('UUID'), default=uuid.uuid4, editable=False, unique=True)
     hashtags = models.CharField(max_length=512, verbose_name=_('Hashtags'),
                                 help_text=_('Comma or semicolon-separated list of hashtags, e.g. "datenspuren;c3sd"'))
-    post_data = models.JSONField(verbose_name=_('Post Data'), blank=True, null=True)
+    posts_data = models.JSONField(verbose_name=_('Posts Data'), default=list, blank=True,
+                                  help_text=_('Cached posts, newest first.'))
+    post_count = models.PositiveIntegerField(verbose_name=_('Cached Posts'), default=10,
+                                             help_text=_('How many posts to cache and pick from.'))
+    recent_window = models.PositiveIntegerField(verbose_name=_('Recent Window'), default=180,
+                                                help_text=_('A post younger than this is always shown. (seconds)'))
     last_fetched = models.DateTimeField(verbose_name=_('Last Fetched'), null=True, blank=True)
     last_changed = models.DateTimeField(verbose_name=_('Last Changed'), auto_now=True)
     created_at = models.DateTimeField(verbose_name=_('Created At'), auto_now_add=True)
@@ -427,32 +443,45 @@ class MastodonPost(models.Model):
     def fetch_posts(self, force: bool = False):
         if self.pk is None:
             raise ValueError('Save model first')
-        import requests as req_lib
-        from datetime import datetime, timezone
-        latest_post = None
-        latest_created_at = None
+        fetched = []
         for hashtag in self.get_hashtags():
-            url = f'https://c3d2.social/api/v1/timelines/tag/{hashtag}?limit=1'
+            url = f'https://c3d2.social/api/v1/timelines/tag/{quote(hashtag)}'
             try:
-                resp = req_lib.get(url, timeout=10)
+                resp = requests.get(url, params={'limit': self.post_count}, timeout=10)
                 resp.raise_for_status()
                 posts = resp.json()
-                if posts and isinstance(posts, list) and len(posts) > 0:
-                    post = posts[0]
-                    created_at = datetime.fromisoformat(post['created_at'].replace('Z', '+00:00'))
-                    if latest_created_at is None or created_at > latest_created_at:
-                        latest_created_at = created_at
-                        latest_post = {
-                            'hashtag': hashtag,
-                            **post,
-                        }
             except Exception as e:
                 logger.warning('Failed to fetch posts for hashtag "%s": %s', hashtag, e)
-        if latest_post:
-            self.post_data = latest_post
-            self.last_fetched = datetime.now(tz=timezone.utc)
-            self.save()
-            logger.info('Updated MastodonPost "%s" [%d] from hashtag "%s"', self.name, self.pk, latest_post['hashtag'])
+                continue
+            if not isinstance(posts, list):
+                logger.warning('Unexpected response for hashtag "%s": %r', hashtag, posts)
+                continue
+            fetched.extend({'hashtag': hashtag, **post}
+                           for post in posts if isinstance(post, dict) and 'id' in post)
+        # A post carrying several of the configured hashtags comes back once per hashtag request;
+        # keep the first copy so it is labelled with the earliest hashtag it matched.
+        by_id: dict[str, dict[str, Any]] = {}
+        for post in fetched:
+            by_id.setdefault(post['id'], post)
+        posts = sorted(by_id.values(), key=mastodon_created_at, reverse=True)[:self.post_count]
+        if not posts:
+            logger.warning('No posts fetched for MastodonPost "%s" [%d], keeping the cached ones', self.name, self.pk)
+            return
+        self.posts_data = posts
+        self.last_fetched = datetime.datetime.now(tz=datetime.UTC)
+        self.save()
+        logger.info('Cached %d posts for MastodonPost "%s" [%d]', len(posts), self.name, self.pk)
+
+    def get_post_to_display(self) -> Optional[dict[str, Any]]:
+        """The newest post while it is fresh, otherwise a random one out of the cache."""
+        posts = self.posts_data or []
+        if not posts:
+            return None
+        newest = posts[0]  # posts_data is stored newest-first
+        age = datetime.datetime.now(tz=datetime.UTC) - mastodon_created_at(newest)
+        if age <= datetime.timedelta(seconds=self.recent_window):
+            return newest
+        return random.choice(posts)
 
 
 class MastodonPostView(BaseView):
@@ -467,3 +496,6 @@ class MastodonPostView(BaseView):
         verbose_name_plural = _('Mastodon Post Views')
         default_related_name = 'mastodon_post_views'
         ordering = ["name"]
+
+    def get_context(self) -> dict[str, Any]:
+        return {'post_data': self.mastodon_post.get_post_to_display()}

@@ -128,10 +128,15 @@ class ScheduleViewAdmin(ViewAdmin):
 
 @admin.register(MastodonPost)
 class MastodonPostAdmin(admin.ModelAdmin):
-    list_display = ('name', 'hashtags', 'last_fetched', 'last_changed')
+    list_display = ('name', 'hashtags', 'post_count', 'cached_posts', 'last_fetched', 'last_changed')
+    readonly_fields = ('posts_data', 'last_fetched')
     actions = ('fetch_posts',)
 
-    @admin.action(description=_('Fetch Posts from Fedi.buzz'))
+    @admin.display(description=_('Cached Posts'))
+    def cached_posts(self, obj: MastodonPost):
+        return len(obj.posts_data or [])
+
+    @admin.action(description=_('Fetch Posts from c3d2.social'))
     def fetch_posts(self, request, queryset):
         for post in queryset:
             post.fetch_posts()
