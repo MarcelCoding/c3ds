@@ -75,7 +75,12 @@ class DisplayConsumer(WebsocketConsumer):
         if current != version:
             logger.info('Display "%s" reports version %r, current is %r - telling it to reload',
                         self.display_slug, version, current)
-            self.cmd({'cmd': DisplayCommands.RELOAD, 'delayed': False})
+            # Sent the way the missed command was: replaying a spread-out reload as an immediate
+            # one would send the whole fleet at the server at once, which is what it avoids.
+            self.cmd({'cmd': {
+                'cmd': DisplayCommands.RELOAD,
+                'delayed': display.last_reload_delayed,
+            }})
 
     def cmd(self, event):
         # Receive message from display group

@@ -42,6 +42,8 @@ class Display(models.Model):
     created_at = models.DateTimeField(verbose_name=_('Created At'), auto_now_add=True)
     #: Bumped every time a reload goes out, so a display can tell whether it missed one.
     last_reloaded_at = models.DateTimeField(verbose_name=_('Last Reloaded At'), null=True, editable=False)
+    #: How that reload was sent, so catching up on a missed one keeps it spread out.
+    last_reload_delayed = models.BooleanField(default=False, editable=False)
 
     objects = DisplayQuerySet.as_manager()
 
@@ -96,7 +98,8 @@ class Display(models.Model):
         # Outside a transaction on_commit() runs the callback right away.
         # Stamped inside the transaction so a page rendered after the commit already carries the
         # new version - a display that misses the command below then notices on its next ping.
-        cls.objects.filter(slug=slug).update(last_reloaded_at=datetime.datetime.now(tz=datetime.UTC))
+        cls.objects.filter(slug=slug).update(last_reloaded_at=datetime.datetime.now(tz=datetime.UTC),
+                                            last_reload_delayed=delayed)
         transaction.on_commit(lambda: async_to_sync(cls.async_reload_by_slug)(slug, delayed))
 
     def reload(self, delayed: bool = False):

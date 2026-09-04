@@ -166,15 +166,28 @@ class DisplayConsumerTests(TransactionTestCase):
         await communicator.send_json_to({'cmd': 'ping', 'version': version})
         replies = []
         while not await communicator.receive_nothing(timeout=0.3):
-            replies.append((await communicator.receive_json_from())['cmd'])
+            replies.append(await communicator.receive_json_from())
         return replies
+
+    async def make_display(self, slug='d'):
+        view = await sync_to_async(HTMLView.objects.create)(name='V', slug='v')
+        return await sync_to_async(Display.objects.create)(name='D', slug=slug, static_view=view)
+
+    async def catch_up_reload(self, slug='d'):
+        """The reload a display gets back when it reports a version that is out of date."""
+        communicator = await self.connect(slug)
+        try:
+            replies = await self.ping(communicator, 'a-version-from-before')
+        finally:
+            await communicator.disconnect()
+        return next((r for r in replies if r['cmd'] == 'reload'), None)
 
     async def test_ping_with_a_stale_version_gets_a_reload(self):
         display = await sync_to_async(Display.objects.create)(
             name='D', slug='d', static_view=await sync_to_async(HTMLView.objects.create)(name='V', slug='v'))
         communicator = await self.connect('d')
 
-        self.assertIn('reload', await self.ping(communicator, 'a-version-from-before'))
+        self.assertIn('reload', [r['cmd'] for r in await self.ping(communicator, 'a-version-from-before')])
 
         await communicator.disconnect()
 
@@ -184,12 +197,48 @@ class DisplayConsumerTests(TransactionTestCase):
         version = await sync_to_async(lambda: Display.objects.get(slug='d').get_content_version())()
         communicator = await self.connect('d')
 
-        self.assertEqual(await self.ping(communicator, version), ['pong'])
+        self.assertEqual([r['cmd'] for r in await self.ping(communicator, version)], ['pong'])
 
         await communicator.disconnect()
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class CatchUpUrgencyTests(TransactionTestCase):
+    """The catch-up must repeat how the missed command was sent, or it defeats the spreading."""
+
+    async def connect(self, slug):
+        communicator = WebsocketCommunicator(URLRouter(websocket_urlpatterns), f'/ws/display/{slug}/')
+        communicator.scope['user'] = AnonymousUser()
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected)
+        return communicator
+
+    async def ping_for_reload(self, slug):
+        communicator = await self.connect(slug)
+        try:
+            await communicator.send_json_to({'cmd': 'ping', 'version': 'a-version-from-before'})
+            replies = []
+            while not await communicator.receive_nothing(timeout=0.3):
+                replies.append(await communicator.receive_json_from())
+        finally:
+            await communicator.disconnect()
+        return next((r for r in replies if r['cmd'] == 'reload'), None)
+
+    async def test_catching_up_on_a_spread_reload_is_spread_too(self):
+        await sync_to_async(Display.objects.create)(
+            name='D', slug='d', static_view=await sync_to_async(HTMLView.objects.create)(name='V', slug='v'))
+        await sync_to_async(Display.reload_by_slug)('d', True)
+
+        self.assertEqual((await self.ping_for_reload('d'))['delayed'], True)
+
+    async def test_catching_up_on_an_immediate_reload_stays_immediate(self):
+        await sync_to_async(Display.objects.create)(
+            name='D', slug='d', static_view=await sync_to_async(HTMLView.objects.create)(name='V', slug='v'))
+        await sync_to_async(Display.reload_by_slug)('d', False)
+
+        self.assertEqual((await self.ping_for_reload('d'))['delayed'], False)
+
+
 class ScheduleFetchTests(TransactionTestCase):
     """TransactionTestCase: a TestCase wraps the test in a transaction and would mask this."""
 
