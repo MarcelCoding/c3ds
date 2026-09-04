@@ -6,14 +6,14 @@ from django.core.cache import cache
 from prometheus_client.core import GaugeMetricFamily, REGISTRY
 from prometheus_client.registry import Collector
 
-from c3ds.core.models import (Display, BaseView, HTMLView, ImageView, VideoView, IFrameView, RandomView,
-                              ScheduleView)
+from c3ds.core.models import (Display, BaseView, HTMLView, ImageView, VideoView, IFrameView, MastodonPostView,
+                              RandomView, ScheduleView)
 
 
 class CustomCollector(Collector):
     def collect(self):
         # For some reason this is called two times during initialization where we don't want to do Database queries.
-        # So we check if initialization is done, and if not just exist.
+        # So we check if initialization is done, and if not just exit.
         if not apps.ready:
             return
 
@@ -50,6 +50,7 @@ class CustomCollector(Collector):
         view_count.add_metric(['video'], VideoView.objects.all().count())
         view_count.add_metric(['iframe'], IFrameView.objects.all().count())
         view_count.add_metric(['schedule'], ScheduleView.objects.all().count())
+        view_count.add_metric(['mastodon'], MastodonPostView.objects.all().count())
         view_count.add_metric(['random'], RandomView.objects.all().count())
         yield view_count
         yield GaugeMetricFamily('number_of_views_total', 'Number of views configured',

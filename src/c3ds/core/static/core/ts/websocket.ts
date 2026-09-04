@@ -3,7 +3,7 @@ export interface WebSocketCommand {
 }
 
 export interface ReceivedWebSocketCommand extends WebSocketCommand {
-  receiveTimestampe: number;
+  receiveTimestamp: number;
 }
 
 export interface ReloadWebSocketCommand extends ReceivedWebSocketCommand {
@@ -47,7 +47,7 @@ export class WebSocketClient {
       const timeReceived = performance.now()
       console.log("got data from websocket:", e.data)
       const data: ReceivedWebSocketCommand = JSON.parse(e.data);
-      data.receiveTimestampe = timeReceived
+      data.receiveTimestamp = timeReceived
 
       switch (data?.cmd) {
         case 'reload':
@@ -83,7 +83,7 @@ export class WebSocketClient {
   reconnect() {
     this.ws?.close()
     const timeout = 5000 + 2000 * Math.random()
-    console.log('WS connection died, reconencting in %d', timeout)
+    console.log('WS connection died, reconnecting in %d', timeout)
     window.setTimeout(() => {
       this.connect()
     }, timeout)

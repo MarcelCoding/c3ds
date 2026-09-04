@@ -64,7 +64,7 @@ class DisplayAdmin(admin.ModelAdmin, SlugLinkMixin):
 class ViewAdmin(admin.ModelAdmin, SlugLinkMixin):
     actions = ('reload',)
 
-    @admin.action(description=_('Reload Sssigned Display(s)'))
+    @admin.action(description=_('Reload Assigned Display(s)'))
     def reload(self, request: HttpRequest, queryset):
         num_displays = queryset.annotate(num_displays = functions.Coalesce(models.Count('displays'), 0))\
             .aggregate(num_displays=models.Sum('num_displays', default=0))['num_displays']

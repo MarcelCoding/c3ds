@@ -4,7 +4,7 @@ from c3ds.core.models import MastodonPost
 
 
 class Command(BaseCommand):
-    help = 'Fetch latest posts from Mastodon instances via fedi.buzz API'
+    help = 'Fetch the latest posts for the configured hashtags from c3d2.social'
 
     def add_arguments(self, parser):
         parser.add_argument(

@@ -102,7 +102,7 @@ import {getCurrentTime} from "../ts/ntp.ts";
 
       // if it is the same, sort by room name
 
-      // forst check special rooms
+      // first check special rooms
       const aInPriorityRooms = priorityRooms.includes(a.room)
       const bInPriorityRooms = priorityRooms.includes(b.room)
       if (aInPriorityRooms || bInPriorityRooms) {

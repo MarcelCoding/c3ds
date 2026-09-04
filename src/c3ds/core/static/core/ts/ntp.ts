@@ -64,8 +64,8 @@ export class NTPClient {
       return;
     }
     const serverTime = new Date(response.serverTime)
-    const roundTripTime = response.receiveTimestampe - response.clientSendTimestamp
-    const offset = Date.now() - (response.serverTime + roundTripTime / 2 + performance.now() - response.receiveTimestampe)
+    const roundTripTime = response.receiveTimestamp - response.clientSendTimestamp
+    const offset = Date.now() - (response.serverTime + roundTripTime / 2 + performance.now() - response.receiveTimestamp)
     this.latency = roundTripTime
     this.offset = offset
 

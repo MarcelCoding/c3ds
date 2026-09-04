@@ -26,7 +26,7 @@ class DisplayQuerySet(models.QuerySet):
     def reload(self, delayed: Optional[bool] = None):
         slugs = self.values_list('slug', flat=True)
         if delayed is None:
-            delayed = delayed = len(slugs) >= settings.DELAYED_RELOAD_THRESHOLD
+            delayed = len(slugs) >= settings.DELAYED_RELOAD_THRESHOLD
         for slug in slugs:
             self.model.reload_by_slug(slug, delayed)
 
@@ -72,7 +72,7 @@ class Display(models.Model):
         async_to_sync(cls.async_reload_by_slug)(slug, delayed)
 
     async def async_reload(self, delayed: bool = False):
-        await self.async_reload_by_slug(self.slug)
+        await self.async_reload_by_slug(self.slug, delayed)
 
     def reload(self, delayed: bool = False):
         async_to_sync(self.async_reload)(delayed)
@@ -89,7 +89,7 @@ class Display(models.Model):
         return f'{slug}-ntp-offset'
 
     def get_ntp_offset_cache_key(self):
-        return self.heartbeat_cache_key_for_slug(self.slug)
+        return self.ntp_offset_cache_key_for_slug(self.slug)
 
 
 class MediaFile(models.Model):
