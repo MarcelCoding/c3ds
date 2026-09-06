@@ -104,6 +104,8 @@ body {
   left: 50%;
   transform: translateX(-50%) translateY(-50%);
   text-transform: uppercase;
+  animation: fade-in 0.5s ease forwards; 
+  opacity: 0;
 }
 
 .logo {
@@ -569,5 +571,12 @@ iframe {
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+
+@keyframes fade-in {
+  to {
+    opacity: 1;
   }
 }
