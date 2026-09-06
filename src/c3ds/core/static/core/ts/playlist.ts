@@ -47,7 +47,10 @@ const parseItems = (data: string): PlaylistItem[] => {
     current = next
     window.clearTimeout(timer)
 
-    slide.addEventListener('load', () => {
+    const onLoad = () => {
+      // Ignore load events triggered by unloading the slide (src set to about:blank).
+      if (slide.src === 'about:blank') return
+      slide.removeEventListener('load', onLoad)
       // Only reveal the next entry once it is rendered, so the previous one covers the load.
       slide.classList.add('is-active')
       if (previous !== next) {
@@ -56,11 +59,15 @@ const parseItems = (data: string): PlaylistItem[] => {
         slides[previous]!.src = 'about:blank'
       }
       if (item.duration !== null) timer = window.setTimeout(advance, item.duration * 1000)
-    }, { once: true })
+    }
+    slide.addEventListener('load', onLoad)
 
     // Re-showing the only entry in a playlist has to reload it, assigning the same src would not.
-    if (previous === next && slide.src !== '') slide.contentWindow?.location.reload()
-    else slide.src = item.url
+    if (previous === next && slide.src !== '') {
+      slide.contentWindow?.location.reload()
+    } else {
+      slide.src = item.url
+    }
   }
 
   window.addEventListener('message', (event) => {
