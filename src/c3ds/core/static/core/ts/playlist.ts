@@ -9,6 +9,9 @@ type PlaylistItem = {
 /** An entry is loaded well before it is shown, so the two states are tracked separately. */
 type SlideState = 'empty' | 'loading' | 'ready'
 
+/** Kept in step with the CSS transition on .playlist-slide; see the fallback below for why. */
+const CROSSFADE_MS = 600
+
 const parseItems = (data: string): PlaylistItem[] => {
   try {
     const parsed = JSON.parse(data)
@@ -75,8 +78,19 @@ const parseItems = (data: string): PlaylistItem[] => {
     slides[index]!.contentWindow?.postMessage({ type: SLIDE_VISIBLE }, window.location.origin)
 
     if (previous !== index) {
-      slides[previous]!.classList.remove('is-active')
-      unload(previous)
+      const outgoing = slides[previous]!
+      outgoing.classList.remove('is-active')
+      // Left loaded until its fade-out is actually done - blanking it straight away would swap
+      // in a blank frame for the crossfade to play instead of the entry it is meant to show.
+      // The timeout is a fallback for when transitionend never fires, e.g. a backgrounded tab.
+      let fallback: number
+      const onFadedOut = () => {
+        window.clearTimeout(fallback)
+        outgoing.removeEventListener('transitionend', onFadedOut)
+        unload(previous)
+      }
+      outgoing.addEventListener('transitionend', onFadedOut)
+      fallback = window.setTimeout(onFadedOut, CROSSFADE_MS + 200)
     }
     // Timed from the reveal, not from the load, so loading ahead cannot shorten a turn.
     const duration = items[index]!.duration

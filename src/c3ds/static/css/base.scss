@@ -217,20 +217,6 @@ body.slide-visible .headline {
   }
 }
 
-.slide-fade-enter-active {
-  transition: all 0.3s ease-out;
-}
-
-.slide-fade-leave-active {
-  transition: all 0.8s cubic-bezier(1, 0.5, 0.8, 1);
-}
-
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  transform: translateX(20px);
-  opacity: 0;
-}
-
 .list-move,
 .list-enter-active,
 .list-leave-active {
@@ -240,7 +226,6 @@ body.slide-visible .headline {
 .list-enter-from,
 .list-leave-to {
   opacity: 0;
-  transform: translateX(30px);
 }
 
 .list-leave-active {
@@ -432,10 +417,18 @@ iframe {
   position: absolute;
   top: 0;
   left: 0;
-  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  // Kept in step with CROSSFADE_MS in playlist.ts, which holds the outgoing entry loaded for
+  // exactly this long so the crossfade has something to fade out rather than a blank frame.
+  transition: opacity 0.6s ease;
 
   &.is-active {
-    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    // Committed the instant this class is toggled - unlike opacity, z-index cannot cross-fade -
+    // so the entry fading in is always the one on top, however the two compare in DOM order.
+    z-index: 1;
   }
 }
 
@@ -565,10 +558,6 @@ iframe {
   }
 }
 
-body.slide-visible .mastodon-post {
-  animation: fade-in-from-right 0.5s ease;
-}
-
 .weather-container {
   height: 100%;
   // fixed frame padding, kept outside the scaled box so it never shrinks
@@ -649,22 +638,6 @@ body.slide-visible .mastodon-post {
 
   .weather-day-min {
     color: var(--ds-muted);
-  }
-}
-
-body.slide-visible .weather-forecast {
-  animation: fade-in-from-right 0.5s ease;
-}
-
-@keyframes fade-in-from-right {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
   }
 }
 
