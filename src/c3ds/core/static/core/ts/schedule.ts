@@ -2,6 +2,7 @@ import {ComponentPublicInstance, createApp} from 'vue'
 import ScheduleView from "../components/ScheduleView.vue";
 import axios from 'axios'
 import {ScheduleJson, Schedule} from "../../../../static/ts/c3voc.ts";
+import {onSlideVisible} from "./slide.ts";
 
 declare const window: Window & typeof globalThis & {
  scheduleView?: ComponentPublicInstance<typeof ScheduleView>
@@ -61,7 +62,9 @@ if (scheduleContainer !== null) {
     // The Schedule has never been fetched yet; render empty instead of requesting the page itself.
     console.warn('no schedule url configured, nothing to load')
   } else {
-    load_data()
+    // The rows animate in as the response arrives (TransitionGroup), so the first fetch waits
+    // until the entry is on screen - loaded a turn ahead, it would animate to nobody.
+    onSlideVisible(load_data)
     window.setInterval(load_data, 5*60*1000)
   }
 }

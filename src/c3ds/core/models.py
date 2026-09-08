@@ -247,10 +247,6 @@ class BaseView(models.Model):
     def __str__(self):
         return self.name
 
-    def get_view(self):
-        raise NotImplementedError()
-        # ToDo: implement view loading
-
     def get_template_name(self):
         if self.template_name:
             return self.template_name
@@ -535,8 +531,17 @@ class MastodonPost(models.Model):
         if not posts:
             logger.warning('No posts fetched for MastodonPost "%s" [%d], keeping the cached ones', self.name, self.pk)
             return
+        fetched_at = datetime.datetime.now(tz=datetime.UTC)
+        if posts == self.posts_data:
+            # Stamped with update() rather than save(): saving fires the reload signal, and every
+            # display showing these posts would reload itself for content it is already rendering.
+            # The fetch runs on a timer, so that reload arrives out of nowhere.
+            logger.info('Posts for MastodonPost "%s" [%d] are unchanged', self.name, self.pk)
+            MastodonPost.objects.filter(pk=self.pk).update(last_fetched=fetched_at)
+            self.last_fetched = fetched_at
+            return
         self.posts_data = posts
-        self.last_fetched = datetime.datetime.now(tz=datetime.UTC)
+        self.last_fetched = fetched_at
         self.save()
         logger.info('Cached %d posts for MastodonPost "%s" [%d]', len(posts), self.name, self.pk)
 

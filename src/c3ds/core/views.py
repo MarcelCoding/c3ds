@@ -7,6 +7,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import DetailView
 
+from c3ds.core.build import get_build_id
 from c3ds.core.models import BaseView, Display
 
 
@@ -49,9 +50,6 @@ class GenericView(DetailView):
         })
         ctx.update(self.object.get_context())
         return ctx
-
-
-
 
 
 class DisplayView(DetailView):
@@ -116,6 +114,9 @@ class DisplayView(DetailView):
 
         if self.object is not None:
             ctx['display_version'] = self.object.get_content_version()
+            # Echoed on every ping alongside the content version, so a display that is still
+            # running an earlier deploy's scripts finds out about the new one.
+            ctx['build_id'] = get_build_id()
 
         if self.object is not None and self.object.playlist is not None:
             ctx['playlist_json'] = json.dumps(self.object.playlist.get_items())

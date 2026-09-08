@@ -19,20 +19,23 @@ export class WebSocketClient {
   displaySlug: string
   /** Revision this page was rendered from; echoed on every ping so the server can spot a miss. */
   contentVersion: string | null
+  /** Frontend build this page was served by; echoed too, since a deploy changes no content. */
+  buildId: string | null
   ws: WebSocket | null = null
   heartbeatInterval: number | null = null
   unansweredPings: number = 0
-  connectedBefore: boolean = false
   reloadTimer: number | null = null
   reloadDelayed: boolean = false
   callbacks: {[key: string]: websocketMessageCallback} = Object()
 
-  constructor(displaySlug: string, autoconnect: boolean, contentVersion: string | null = null) {
+  constructor(displaySlug: string, autoconnect: boolean, contentVersion: string | null = null,
+              buildId: string | null = null) {
     if (displaySlug === undefined || displaySlug == null) {
       throw Error('display slug missing')
     }
     this.displaySlug = displaySlug
     this.contentVersion = contentVersion
+    this.buildId = buildId
     if (autoconnect) this.connect()
   }
 
@@ -63,16 +66,10 @@ export class WebSocketClient {
       console.log('opening websocket');
       this.unansweredPings = 0
       this.startTimers()
-      if (this.connectedBefore) {
-        // Every display reconnects at once after a restart, so spread these out: a server that
-        // has just come back up is the worst moment to send the whole fleet at it together.
-        console.log('reconnected after server restart, reloading page')
-        this.reload(true)
-        return
-      }
-      this.connectedBefore = true
-      // Straight away rather than at the first interval: the reply also says whether a reload
-      // command went out while this page was loading, when no socket was there to receive it.
+      // Straight away rather than at the first interval, and on a reconnect as much as on the
+      // first connection: the reply says whether this page is behind - a reload command sent
+      // while it was loading, or while the socket was down, reached nobody. Reloading here on
+      // spec instead would send the display back to the server for every passing hiccup.
       this.sendPing()
     }
     this.ws.onmessage = (e) => {
@@ -99,12 +96,15 @@ export class WebSocketClient {
       }
     }
     this.ws.onclose = () => {
+      // Nothing to ping over a socket that is gone, and a send on one throws; the next onopen
+      // starts the heartbeat again.
+      this.stopTimers()
       this.reconnect()
     }
   }
 
+  /** Called from onclose only, so the old socket is already gone by the time we get here. */
   reconnect() {
-    this.ws?.close()
     const timeout = 5000 + 2000 * Math.random()
     console.log('WS connection died, reconnecting in %d', timeout)
     window.setTimeout(() => {
@@ -121,17 +121,25 @@ export class WebSocketClient {
 
   stopTimers() {
     if (this.heartbeatInterval !== null) window.clearInterval(this.heartbeatInterval)
+    this.heartbeatInterval = null
   }
 
   sendPing() {
     console.log('sending ping')
     this.unansweredPings += 1
-    // No pong for 300 sec. Every display loses the server at the same moment, so spread the
-    // reloads rather than have the whole fleet hit it the instant it answers again.
-    if (this.unansweredPings > 30) this.reload(true)
+    // No pong for 300 sec: the socket is still up but nothing is answering over it. Drop it and
+    // let onclose start a fresh one - reloading instead would ask an unreachable server for a
+    // page and leave the display parked on a browser error, with no script left to recover.
+    // Whatever it missed comes back from the ping the new connection opens with.
+    if (this.unansweredPings > 30) {
+      console.log('no pong for 30 pings, dropping the connection')
+      this.ws?.close()
+      return
+    }
     this.ws?.send(JSON.stringify({
       cmd: 'ping',
       version: this.contentVersion,
+      build: this.buildId,
     }))
   }
 

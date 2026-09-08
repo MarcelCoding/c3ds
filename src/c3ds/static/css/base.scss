@@ -104,8 +104,12 @@ body {
   left: 50%;
   transform: translateX(-50%) translateY(-50%);
   text-transform: uppercase;
-  animation: fade-in 0.5s ease forwards; 
   opacity: 0;
+}
+
+// Held back until the page is on screen and its font can draw - see main.ts.
+body.slide-visible .headline {
+  animation: fade-in 0.5s ease forwards;
 }
 
 .logo {
@@ -443,7 +447,6 @@ iframe {
 }
 
 .mastodon-post {
-  animation: fade-in-from-right 0.5s ease;
   // driven by the fit-to-container scaler; every length below is in em
   font-size: 16px;
   height: 100%;
@@ -560,6 +563,10 @@ iframe {
       }
     }
   }
+}
+
+body.slide-visible .mastodon-post {
+  animation: fade-in-from-right 0.5s ease;
 }
 
 @keyframes fade-in-from-right {

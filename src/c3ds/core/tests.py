@@ -1,13 +1,17 @@
 import tempfile
+from io import StringIO
+from pathlib import Path
 from unittest import mock
 
 from asgiref.sync import sync_to_async
 from channels.routing import URLRouter
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth.models import AnonymousUser
+from django.core.management import call_command
 from django.db import connection
-from django.test import TestCase, TransactionTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
 
+from c3ds.core.build import get_build_id
 from c3ds.core.models import (Display, HTMLView, ImageFile, ImageView, MastodonPost, MastodonPostView,
                               Playlist, PlaylistEntry, RandomView, Schedule, ScheduleView, VideoFile, VideoView)
 from c3ds.urls import websocket_urlpatterns
@@ -257,3 +261,176 @@ class ScheduleFetchTests(TransactionTestCase):
             schedule.update_schedule()
 
         self.assertEqual(in_transaction, [False])
+
+
+class MastodonFetchTests(ReloadCaptureMixin, TestCase):
+    """The posts are re-fetched on a timer, so a fetch bringing nothing new must not reload."""
+
+    POSTS = [
+        {'id': '2', 'created_at': '2026-09-08T12:00:00+00:00', 'content': 'newer'},
+        {'id': '1', 'created_at': '2026-09-08T11:00:00+00:00', 'content': 'older'},
+    ]
+
+    def setUp(self):
+        self.post = MastodonPost.objects.create(name='Toots', hashtags='c3d2')
+        playlist = Playlist.objects.create(name='List', slug='list')
+        PlaylistEntry.objects.create(
+            playlist=playlist, order=0,
+            view=MastodonPostView.objects.create(name='MV', slug='mv', mastodon_post=self.post))
+        Display.objects.create(name='D', slug='playlist-display', playlist=playlist)
+
+    def fetch(self, posts):
+        # Re-read so the cached posts come back through the JSON field, as they do on a timer run.
+        post = MastodonPost.objects.get(pk=self.post.pk)
+        response = mock.Mock(status_code=200)
+        response.json.return_value = posts
+        response.raise_for_status.return_value = None
+        with mock.patch('c3ds.core.models.requests.get', return_value=response):
+            post.fetch_posts()
+
+    def test_a_fetch_bringing_new_posts_reloads_the_displays_showing_them(self):
+        self.assertEqual(self.reloaded_slugs(lambda: self.fetch(self.POSTS)), {'playlist-display'})
+
+    def test_a_fetch_bringing_back_the_cached_posts_reloads_nothing(self):
+        self.fetch(self.POSTS)
+
+        self.assertEqual(self.reloaded_slugs(lambda: self.fetch(self.POSTS)), set())
+
+    def test_a_fetch_bringing_back_the_cached_posts_still_records_the_attempt(self):
+        self.fetch(self.POSTS)
+        MastodonPost.objects.filter(pk=self.post.pk).update(last_fetched=None)
+
+        self.fetch(self.POSTS)
+
+        self.assertIsNotNone(MastodonPost.objects.get(pk=self.post.pk).last_fetched)
+
+
+class BuildIdTests(SimpleTestCase):
+    """The page carries the build it was rendered from, so a deploy can be told from a blip."""
+
+    def build_id_for(self, files: dict[str, str]) -> str:
+        with tempfile.TemporaryDirectory() as static_root:
+            for name, content in files.items():
+                path = Path(static_root) / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content)
+            get_build_id.cache_clear()
+            try:
+                with override_settings(STATIC_ROOT=static_root):
+                    return get_build_id()
+            finally:
+                get_build_id.cache_clear()
+
+    def test_a_rebuilt_manifest_gets_a_different_id(self):
+        before = self.build_id_for({'.vite/manifest.json': '{"main.ts": {"file": "main-1111.js"}}'})
+        after = self.build_id_for({'.vite/manifest.json': '{"main.ts": {"file": "main-2222.js"}}'})
+
+        self.assertNotEqual(before, after)
+
+    def test_the_same_manifest_gets_the_same_id(self):
+        files = {'.vite/manifest.json': '{"main.ts": {"file": "main-1111.js"}}'}
+
+        self.assertEqual(self.build_id_for(files), self.build_id_for(files))
+
+    def test_a_rewritten_staticfiles_manifest_gets_a_different_id(self):
+        before = self.build_id_for({'staticfiles.json': '{"paths": {"a.css": "a.1111.css"}}'})
+        after = self.build_id_for({'staticfiles.json': '{"paths": {"a.css": "a.2222.css"}}'})
+
+        self.assertNotEqual(before, after)
+
+    def test_uncollected_assets_get_no_id_at_all(self):
+        """The dev server serves them unhashed, and nothing there should be told to reload."""
+        self.assertEqual(self.build_id_for({}), '')
+
+
+class BuildIdCheckTests(TransactionTestCase):
+    """After a deploy a display is still running the old JS, and the ping is where that surfaces."""
+
+    async def ping(self, build, version):
+        communicator = WebsocketCommunicator(URLRouter(websocket_urlpatterns), '/ws/display/d/')
+        communicator.scope['user'] = AnonymousUser()
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected)
+        replies = []
+        try:
+            await communicator.send_json_to({'cmd': 'ping', 'version': version, 'build': build})
+            while not await communicator.receive_nothing(timeout=0.3):
+                replies.append(await communicator.receive_json_from())
+        finally:
+            await communicator.disconnect()
+        return replies
+
+    async def make_display(self):
+        view = await sync_to_async(HTMLView.objects.create)(name='V', slug='v')
+        await sync_to_async(Display.objects.create)(name='D', slug='d', static_view=view)
+        return await sync_to_async(lambda: Display.objects.get(slug='d').get_content_version())()
+
+    async def test_a_page_from_an_older_build_is_told_to_reload(self):
+        version = await self.make_display()
+
+        with mock.patch('c3ds.core.consumer.get_build_id', return_value='the-current-build'):
+            replies = await self.ping('the-build-before', version)
+
+        self.assertIn('reload', [r['cmd'] for r in replies])
+
+    async def test_catching_up_on_a_deploy_is_spread_out(self):
+        """Every display is behind at once after a deploy, so they must not all come back together."""
+        version = await self.make_display()
+
+        with mock.patch('c3ds.core.consumer.get_build_id', return_value='the-current-build'):
+            replies = await self.ping('the-build-before', version)
+
+        self.assertEqual(next(r for r in replies if r['cmd'] == 'reload')['delayed'], True)
+
+    async def test_a_page_from_the_current_build_is_only_answered_with_a_pong(self):
+        version = await self.make_display()
+
+        with mock.patch('c3ds.core.consumer.get_build_id', return_value='the-current-build'):
+            replies = await self.ping('the-current-build', version)
+
+        self.assertEqual([r['cmd'] for r in replies], ['pong'])
+
+    async def test_a_display_without_a_build_id_is_left_alone(self):
+        """Nothing was collected, so there is no build to be behind."""
+        version = await self.make_display()
+
+        with mock.patch('c3ds.core.consumer.get_build_id', return_value=''):
+            replies = await self.ping('', version)
+
+        self.assertEqual([r['cmd'] for r in replies], ['pong'])
+
+
+class ReloadAllDisplaysTests(ReloadCaptureMixin, TestCase):
+    """Reloading the fleet by hand has to leave the same trace behind that an edit does."""
+
+    def setUp(self):
+        self.display = Display.objects.create(
+            name='D', slug='d', static_view=HTMLView.objects.create(name='V', slug='v'))
+
+    def run_command(self):
+        call_command('reload_all_displays', stdout=StringIO())
+
+    def current_version(self):
+        return Display.objects.get(pk=self.display.pk).get_content_version()
+
+    def test_every_display_is_reloaded(self):
+        Display.objects.create(
+            name='D2', slug='d2', static_view=HTMLView.objects.create(name='W', slug='w'))
+
+        self.assertEqual(self.reloaded_slugs(self.run_command), {'d', 'd2'})
+
+    def test_the_version_is_bumped_so_a_display_that_missed_it_finds_out(self):
+        before = self.current_version()
+
+        self.reloaded_slugs(self.run_command)
+
+        self.assertNotEqual(before, self.current_version())
+
+    def test_the_fleet_is_told_to_spread_out(self):
+        sent = []
+        with mock.patch.object(Display, 'async_reload_by_slug',
+                               new=mock.AsyncMock(side_effect=lambda slug, delayed=False: sent.append(delayed))):
+            with self.captureOnCommitCallbacks(execute=True):
+                self.run_command()
+
+        self.assertEqual(sent, [True])
