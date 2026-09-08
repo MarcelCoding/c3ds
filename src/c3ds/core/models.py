@@ -576,6 +576,153 @@ class MastodonPostView(BaseView):
         return {'post_data': self.mastodon_post.get_post_to_display()}
 
 
+#: How many hours ahead the hourly forecast reaches, and the step between the points shown.
+WEATHER_HOURLY_RANGE = 12
+WEATHER_HOURLY_STEP = 2
+
+#: How many calendar days (today included) the daily forecast summarises.
+WEATHER_DAILY_RANGE = 3
+
+
+class WeatherLocation(models.Model):
+    name = models.CharField(max_length=128, verbose_name=_('Name'))
+    uuid = models.UUIDField(verbose_name=_('UUID'), default=uuid.uuid4, editable=False, unique=True)
+    latitude = models.DecimalField(max_digits=8, decimal_places=5, verbose_name=_('Latitude'))
+    longitude = models.DecimalField(max_digits=8, decimal_places=5, verbose_name=_('Longitude'))
+    #: Cached hourly readings from Bright Sky, each ``{timestamp, temperature, icon, precipitation}``.
+    forecast_data = models.JSONField(verbose_name=_('Forecast Data'), default=list, blank=True)
+    last_fetched = models.DateTimeField(verbose_name=_('Last Fetched'), null=True, blank=True)
+    last_changed = models.DateTimeField(verbose_name=_('Last Changed'), auto_now=True)
+    created_at = models.DateTimeField(verbose_name=_('Created At'), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('Weather Location')
+        verbose_name_plural = _('Weather Locations')
+        default_related_name = 'weather_locations'
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def fetch_forecast(self, force: bool = False):
+        if self.pk is None:
+            raise ValueError('Save model first')
+        today = datetime.date.today()
+        try:
+            resp = requests.get('https://api.brightsky.dev/weather', params={
+                'lat': str(self.latitude),
+                'lon': str(self.longitude),
+                'date': today.isoformat(),
+                'last_date': (today + datetime.timedelta(days=WEATHER_DAILY_RANGE)).isoformat(),
+                # Bright Sky returns UTC otherwise; the daily bucketing below needs local days.
+                'tz': 'Europe/Berlin',
+            }, timeout=10)
+            resp.raise_for_status()
+            records = resp.json().get('weather', [])
+        except Exception as e:
+            logger.warning('Failed to fetch forecast for WeatherLocation "%s" [%d]: %s', self.name, self.pk, e)
+            return
+        forecast = [
+            {'timestamp': r['timestamp'], 'temperature': r.get('temperature'),
+             'icon': r.get('icon'), 'precipitation': r.get('precipitation')}
+            for r in records if r.get('timestamp')
+        ]
+        if not forecast:
+            logger.warning('No forecast data for WeatherLocation "%s" [%d], keeping the cached one', self.name, self.pk)
+            return
+        fetched_at = datetime.datetime.now(tz=datetime.UTC)
+        if forecast == self.forecast_data:
+            # Stamped with update() rather than save(): saving fires the reload signal, and every
+            # display showing this forecast would reload itself for content it is already rendering.
+            # The fetch runs on a timer, so that reload arrives out of nowhere.
+            logger.info('Forecast for WeatherLocation "%s" [%d] is unchanged', self.name, self.pk)
+            WeatherLocation.objects.filter(pk=self.pk).update(last_fetched=fetched_at)
+            self.last_fetched = fetched_at
+            return
+        self.forecast_data = forecast
+        self.last_fetched = fetched_at
+        self.save()
+        logger.info('Cached %d forecast hours for WeatherLocation "%s" [%d]', len(forecast), self.name, self.pk)
+
+    def _parsed_forecast(self) -> list[tuple[datetime.datetime, dict[str, Any]]]:
+        parsed = []
+        for record in self.forecast_data:
+            try:
+                timestamp = datetime.datetime.fromisoformat(record['timestamp'])
+            except (KeyError, TypeError, ValueError):
+                continue
+            parsed.append((timestamp, record))
+        return parsed
+
+    def get_hourly_forecast(self) -> list[dict[str, Any]]:
+        """The next WEATHER_HOURLY_RANGE hours, sampled every WEATHER_HOURLY_STEP hours."""
+        parsed = self._parsed_forecast()
+        if not parsed:
+            return []
+        now = datetime.datetime.now(tz=datetime.UTC)
+        picks = []
+        for step in range(1, WEATHER_HOURLY_RANGE // WEATHER_HOURLY_STEP + 1):
+            target = now + datetime.timedelta(hours=WEATHER_HOURLY_STEP * step)
+            _, record = min(parsed, key=lambda entry: abs((entry[0] - target).total_seconds()))
+            picks.append(record)
+        return picks
+
+    def get_daily_forecast(self) -> list[dict[str, Any]]:
+        """The next WEATHER_DAILY_RANGE calendar days, each summarised from its hours.
+
+        Starting tomorrow: today is already covered, hour by hour, by ``get_hourly_forecast()``.
+        """
+        parsed = self._parsed_forecast()
+        if not parsed:
+            return []
+        tomorrow = datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=1)
+        by_date: dict[datetime.date, list[tuple[datetime.datetime, dict[str, Any]]]] = {}
+        for entry in parsed:
+            by_date.setdefault(entry[0].date(), []).append(entry)
+
+        days = []
+        for day in sorted(d for d in by_date if d >= tomorrow)[:WEATHER_DAILY_RANGE]:
+            entries = by_date[day]
+            temps = [record['temperature'] for _, record in entries if record.get('temperature') is not None]
+            if not temps:
+                continue
+            precipitation = sum(record.get('precipitation') or 0 for _, record in entries)
+            # The icon for the whole day: whichever hour sits closest to local noon.
+            _, midday_record = min(entries, key=lambda entry: abs(entry[0].hour - 12))
+            days.append({
+                'date': day.isoformat(),
+                'temp_min': min(temps),
+                'temp_max': max(temps),
+                'precipitation': round(precipitation, 1),
+                'icon': midday_record.get('icon'),
+            })
+        return days
+
+
+class WeatherView(BaseView):
+    template_name = 'core/weather_view.html'
+    vue_module = 'WeatherView'
+    # The hourly/daily picks are derived from the wall clock, not from anything with its own version.
+    varies_per_request = True
+    location = models.ForeignKey(WeatherLocation, on_delete=models.PROTECT, verbose_name=_('Weather Location'))
+    refresh_interval = models.PositiveIntegerField(verbose_name=_('Refresh Interval'), default=1800,
+                                                   help_text=_('Refresh interval in seconds'))
+
+    class Meta:
+        verbose_name = _('Weather View')
+        verbose_name_plural = _('Weather Views')
+        default_related_name = 'weather_views'
+        ordering = ["name"]
+
+    def get_context(self) -> dict[str, Any]:
+        return {
+            'weather_data': {
+                'hourly': self.location.get_hourly_forecast(),
+                'daily': self.location.get_daily_forecast(),
+            }
+        }
+
+
 class RandomView(BaseView):
     #: Only rendered when nothing can be picked; normally a target's own template is used.
     template_name = 'core/random_view.html'

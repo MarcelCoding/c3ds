@@ -1,3 +1,4 @@
+import datetime
 import tempfile
 from io import StringIO
 from pathlib import Path
@@ -13,7 +14,8 @@ from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_
 
 from c3ds.core.build import get_build_id
 from c3ds.core.models import (Display, HTMLView, ImageFile, ImageView, MastodonPost, MastodonPostView,
-                              Playlist, PlaylistEntry, RandomView, Schedule, ScheduleView, VideoFile, VideoView)
+                              Playlist, PlaylistEntry, RandomView, Schedule, ScheduleView, VideoFile, VideoView,
+                              WeatherLocation, WeatherView)
 from c3ds.urls import websocket_urlpatterns
 
 
@@ -434,3 +436,106 @@ class ReloadAllDisplaysTests(ReloadCaptureMixin, TestCase):
                 self.run_command()
 
         self.assertEqual(sent, [True])
+
+
+class WeatherFetchTests(ReloadCaptureMixin, TestCase):
+    """The forecast is re-fetched on a timer, so a fetch bringing nothing new must not reload."""
+
+    def response_for(self, hourly):
+        response = mock.Mock(status_code=200)
+        response.json.return_value = {'weather': hourly}
+        response.raise_for_status.return_value = None
+        return response
+
+    def setUp(self):
+        self.location = WeatherLocation.objects.create(name='Dresden', latitude='51.05', longitude='13.74')
+        playlist = Playlist.objects.create(name='List', slug='list')
+        PlaylistEntry.objects.create(
+            playlist=playlist, order=0,
+            view=WeatherView.objects.create(name='WV', slug='wv', location=self.location))
+        Display.objects.create(name='D', slug='playlist-display', playlist=playlist)
+
+    def fetch(self, hourly):
+        # Re-read so the cached forecast comes back through the JSON field, as it does on a timer run.
+        location = WeatherLocation.objects.get(pk=self.location.pk)
+        with mock.patch('c3ds.core.models.requests.get', return_value=self.response_for(hourly)):
+            location.fetch_forecast()
+
+    def test_a_fetch_bringing_a_new_forecast_reloads_the_displays_showing_it(self):
+        hourly = [{'timestamp': '2026-09-08T12:00:00+02:00', 'temperature': 18.0,
+                  'icon': 'clear-day', 'precipitation': 0.0}]
+
+        self.assertEqual(self.reloaded_slugs(lambda: self.fetch(hourly)), {'playlist-display'})
+
+    def test_a_fetch_bringing_back_the_cached_forecast_reloads_nothing(self):
+        hourly = [{'timestamp': '2026-09-08T12:00:00+02:00', 'temperature': 18.0,
+                  'icon': 'clear-day', 'precipitation': 0.0}]
+        self.fetch(hourly)
+
+        self.assertEqual(self.reloaded_slugs(lambda: self.fetch(hourly)), set())
+
+    def test_a_fetch_bringing_back_the_cached_forecast_still_records_the_attempt(self):
+        hourly = [{'timestamp': '2026-09-08T12:00:00+02:00', 'temperature': 18.0,
+                  'icon': 'clear-day', 'precipitation': 0.0}]
+        self.fetch(hourly)
+        WeatherLocation.objects.filter(pk=self.location.pk).update(last_fetched=None)
+
+        self.fetch(hourly)
+
+        self.assertIsNotNone(WeatherLocation.objects.get(pk=self.location.pk).last_fetched)
+
+    def test_a_fetch_bringing_nothing_keeps_the_cached_forecast(self):
+        self.fetch([{'timestamp': '2026-09-08T12:00:00+02:00', 'temperature': 18.0,
+                     'icon': 'clear-day', 'precipitation': 0.0}])
+
+        self.fetch([])
+
+        self.assertEqual(len(WeatherLocation.objects.get(pk=self.location.pk).forecast_data), 1)
+
+
+class WeatherForecastAggregationTests(TestCase):
+    """The picks are derived from the wall clock, so the fixtures are built relative to it."""
+
+    def build_location(self, hours_back=24, hours_ahead=100):
+        now = datetime.datetime.now(tz=datetime.UTC)
+        offsets = range(-hours_back, hours_ahead)
+        forecast = [{
+            'timestamp': (now + datetime.timedelta(hours=offset)).isoformat(),
+            'temperature': float(offset),
+            'icon': f'hour-{offset}',
+            'precipitation': 1.0,
+        } for offset in offsets]
+        location = WeatherLocation.objects.create(name='Dresden', latitude='51.05', longitude='13.74',
+                                                  forecast_data=forecast)
+        return location, now, offsets
+
+    def test_hourly_forecast_samples_every_two_hours_for_the_next_twelve(self):
+        location, now, _offsets = self.build_location()
+
+        hourly = location.get_hourly_forecast()
+
+        self.assertEqual([h['temperature'] for h in hourly], [2.0, 4.0, 6.0, 8.0, 10.0, 12.0])
+
+    def test_daily_forecast_starts_tomorrow_and_covers_three_calendar_days(self):
+        """Today is already covered, hour by hour, by the hourly forecast."""
+        location, now, offsets = self.build_location()
+        tomorrow = now.date() + datetime.timedelta(days=1)
+
+        daily = location.get_daily_forecast()
+
+        self.assertEqual([d['date'] for d in daily],
+                         [(tomorrow + datetime.timedelta(days=i)).isoformat() for i in range(3)])
+        for i, day in enumerate(daily):
+            day_date = tomorrow + datetime.timedelta(days=i)
+            day_offsets = [o for o in offsets if (now + datetime.timedelta(hours=o)).date() == day_date]
+            self.assertEqual(day['temp_min'], float(min(day_offsets)))
+            self.assertEqual(day['temp_max'], float(max(day_offsets)))
+            self.assertEqual(day['precipitation'], round(len(day_offsets) * 1.0, 1))
+            closest_to_noon = min(day_offsets, key=lambda o: abs((now + datetime.timedelta(hours=o)).hour - 12))
+            self.assertEqual(day['icon'], f'hour-{closest_to_noon}')
+
+    def test_an_empty_cache_yields_no_picks(self):
+        location = WeatherLocation.objects.create(name='Dresden', latitude='51.05', longitude='13.74')
+
+        self.assertEqual(location.get_hourly_forecast(), [])
+        self.assertEqual(location.get_daily_forecast(), [])

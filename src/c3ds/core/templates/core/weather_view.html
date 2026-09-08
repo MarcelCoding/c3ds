@@ -1,0 +1,9 @@
+{% extends "core/base.html" %}
+{% load ds_utils vite %}
+{% block header_text %}{{ view.title }}{% endblock %}
+{% block content %}
+    <div class="weather-container" data-refresh-interval="{{ view.refresh_interval }}">
+        {{ weather_data|json_script:"weather-data" }}
+    </div>
+    {% vite 'core/ts/weather.ts' %}
+{% endblock %}

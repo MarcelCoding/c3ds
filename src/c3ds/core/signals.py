@@ -2,7 +2,7 @@ from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 
 from c3ds.core.models import (BaseView, Display, ImageFile, MastodonPost, Playlist, PlaylistEntry,
-                              RandomView, Schedule, VideoFile, displays_showing)
+                              RandomView, Schedule, VideoFile, WeatherLocation, displays_showing)
 
 
 @receiver(post_save, sender=Display)
@@ -62,3 +62,8 @@ def schedule_changed_handler(sender, instance: Schedule, **kwargs):
 @receiver(post_save, sender=MastodonPost)
 def mastodon_post_changed_handler(sender, instance: MastodonPost, **kwargs):
     displays_showing(instance.mastodon_post_views.all()).reload()
+
+
+@receiver(post_save, sender=WeatherLocation)
+def weather_location_changed_handler(sender, instance: WeatherLocation, **kwargs):
+    displays_showing(instance.weather_views.all()).reload()

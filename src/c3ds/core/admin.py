@@ -12,7 +12,7 @@ from django.utils.translation import gettext_lazy as _
 from c3ds.core.models import (BaseView, DEFAULT_DISPLAY_DURATION, Display, DisplayQuerySet, HTMLView, IFrameView,
                               ImageFile, ImageView, Playlist, PlaylistEntry, RandomView, Schedule, ScheduleView,
                               displays_showing,
-                              MastodonPost, MastodonPostView, VideoFile, VideoView)
+                              MastodonPost, MastodonPostView, VideoFile, VideoView, WeatherLocation, WeatherView)
 
 class SlugLinkMixin():
     slug_view = 'view_by_slug'
@@ -142,6 +142,23 @@ class MastodonPostAdmin(admin.ModelAdmin):
 @admin.register(MastodonPostView)
 class MastodonPostViewAdmin(ViewAdmin):
     list_display = ('name', 'slug', 'title', 'layout_mode', 'mastodon_post', 'link', 'last_changed')
+
+
+@admin.register(WeatherLocation)
+class WeatherLocationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'latitude', 'longitude', 'last_fetched', 'last_changed')
+    readonly_fields = ('uuid', 'forecast_data', 'last_fetched')
+    actions = ('fetch_forecast',)
+
+    @admin.action(description=_('Fetch Forecast from Bright Sky'))
+    def fetch_forecast(self, request, queryset):
+        for location in queryset:
+            location.fetch_forecast()
+
+
+@admin.register(WeatherView)
+class WeatherViewAdmin(ViewAdmin):
+    list_display = ('name', 'slug', 'title', 'layout_mode', 'location', 'link', 'last_changed')
 
 
 @admin.register(RandomView)
