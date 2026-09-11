@@ -9,7 +9,8 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from c3ds.core.models import (BaseView, DEFAULT_DISPLAY_DURATION, Display, DisplayQuerySet, HTMLView, IFrameView,
+from c3ds.core.models import (BaseView, DEFAULT_DISPLAY_DURATION, Display, DisplayQuerySet, DVBStop, DVBView,
+                              DVBViewStop, HTMLView, IFrameView,
                               ImageFile, ImageView, Playlist, PlaylistEntry, RandomView, Schedule, ScheduleView,
                               displays_showing,
                               MastodonPost, MastodonPostView, VideoFile, VideoView, WeatherLocation, WeatherView)
@@ -159,6 +160,29 @@ class WeatherLocationAdmin(admin.ModelAdmin):
 @admin.register(WeatherView)
 class WeatherViewAdmin(ViewAdmin):
     list_display = ('name', 'slug', 'title', 'layout_mode', 'location', 'link', 'last_changed')
+
+
+@admin.register(DVBStop)
+class DVBStopAdmin(admin.ModelAdmin):
+    list_display = ('name', 'city', 'stop_id', 'last_changed')
+    search_fields = ('name', 'city', 'stop_id')
+
+
+class DVBViewStopInline(admin.TabularInline):
+    model = DVBViewStop
+    extra = 1
+    fields = ('stop', 'walking_minutes', 'excluded_lines', 'excluded_destinations')
+    autocomplete_fields = ('stop',)
+
+
+@admin.register(DVBView)
+class DVBViewAdmin(ViewAdmin):
+    list_display = ('name', 'slug', 'title', 'layout_mode', 'stop_count', 'link', 'last_changed')
+    inlines = [DVBViewStopInline]
+
+    @admin.display(description=_('Stops'))
+    def stop_count(self, obj: DVBView):
+        return obj.stops.count()
 
 
 @admin.register(RandomView)

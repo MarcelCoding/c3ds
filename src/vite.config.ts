@@ -25,6 +25,7 @@ export default defineConfig({
         'c3ds/core/static/core/ts/video.ts',
         'c3ds/core/static/core/ts/mastodon.ts',
         'c3ds/core/static/core/ts/weather.ts',
+        'c3ds/core/static/core/ts/dvb.ts',
       ],
     }),
     {

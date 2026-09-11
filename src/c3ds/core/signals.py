@@ -1,8 +1,8 @@
 from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 
-from c3ds.core.models import (BaseView, Display, ImageFile, MastodonPost, Playlist, PlaylistEntry,
-                              RandomView, Schedule, VideoFile, WeatherLocation, displays_showing)
+from c3ds.core.models import (BaseView, Display, DVBView, DVBViewStop, ImageFile, MastodonPost, Playlist,
+                              PlaylistEntry, RandomView, Schedule, VideoFile, WeatherLocation, displays_showing)
 
 
 @receiver(post_save, sender=Display)
@@ -67,3 +67,12 @@ def mastodon_post_changed_handler(sender, instance: MastodonPost, **kwargs):
 @receiver(post_save, sender=WeatherLocation)
 def weather_location_changed_handler(sender, instance: WeatherLocation, **kwargs):
     displays_showing(instance.weather_views.all()).reload()
+
+
+@receiver(post_save, sender=DVBViewStop)
+@receiver(post_delete, sender=DVBViewStop)
+def dvb_view_stop_changed_handler(sender, instance: DVBViewStop, **kwargs):
+    # A custom M2M through model's rows are saved/deleted directly (e.g. by the admin inline),
+    # which never fires m2m_changed - that signal only covers the M2M manager's own add/remove/set.
+    # Look the view up by id: on a cascade delete the view row may already be gone.
+    displays_showing(DVBView.objects.filter(pk=instance.view_id)).reload()

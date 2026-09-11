@@ -1,6 +1,7 @@
 import datetime
 import logging
 import random
+import re
 import uuid
 from contextlib import suppress
 from pathlib import Path
@@ -739,6 +740,178 @@ class WeatherView(BaseView):
                 'daily': self.location.get_daily_forecast(),
             }
         }
+
+
+#: Base URL for the VVO/DVB open data API (used by dvbpy/dvbjs).
+DVB_BASE_URL = 'https://webapi.vvo-online.de'
+
+#: Default number of upcoming departures to show for each stop.
+DVB_DEPARTURES_PER_STOP = 7
+
+#: Kept short: this runs synchronously in a page request, and several stops are fetched
+#: sequentially, so a slow/unreachable API must not stack up into a slow page load.
+DVB_REQUEST_TIMEOUT = 6
+
+#: A line filter only keeps some of what the API returns, so enough matching departures must
+#: survive out of a larger, unfiltered fetch to still fill departures_per_stop.
+DVB_FILTER_FETCH_MULTIPLIER = 5
+
+#: Matches the API's Microsoft-JSON date format, e.g. "/Date(1699999999000+0100)/".
+DVB_DATE_RE = re.compile(r'/Date\((\d+)([+-]\d{4})?\)/')
+
+
+def dvb_parse_date(value: Optional[str]) -> Optional[datetime.datetime]:
+    """Parses a VVO API timestamp; ``None`` if missing or unparseable."""
+    if not value:
+        return None
+    match = DVB_DATE_RE.match(value)
+    if not match:
+        return None
+    return datetime.datetime.fromtimestamp(int(match.group(1)) / 1000, tz=datetime.UTC)
+
+
+class DVBStop(models.Model):
+    """A VVO stop, imported from the community-maintained stop directory.
+
+    See the ``import_dvb_stops`` management command - rows here are not meant to be
+    created by hand, the import command is what keeps ``stop_id`` correct.
+    """
+    stop_id = models.CharField(max_length=32, verbose_name=_('Stop ID'), unique=True)
+    name = models.CharField(max_length=128, verbose_name=_('Name'))
+    city = models.CharField(max_length=128, verbose_name=_('City'), blank=True)
+    last_changed = models.DateTimeField(verbose_name=_('Last Changed'), auto_now=True)
+    created_at = models.DateTimeField(verbose_name=_('Created At'), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('DVB Stop')
+        verbose_name_plural = _('DVB Stops')
+        default_related_name = 'dvb_stops'
+        ordering = ['city', 'name']
+
+    def __str__(self):
+        return f'{self.name} ({self.city})' if self.city else self.name
+
+
+def _split_filter_list(value: str) -> list[str]:
+    return [item.strip() for item in value.replace(',', ';').split(';') if item.strip()]
+
+
+class DVBViewStop(models.Model):
+    """A stop assigned to a DVBView, with optional per-stop line/destination filters.
+
+    A plain M2M can't tell two views' shared stop apart, but the same line can run through
+    several stops a view shows - e.g. tram 3 passing both "Zeithainer Straße" and "Liststraße" -
+    so which lines/destinations to show has to live on this assignment, not on the stop or view alone.
+    """
+    view = models.ForeignKey('DVBView', on_delete=models.CASCADE, related_name='stop_entries')
+    stop = models.ForeignKey(DVBStop, on_delete=models.CASCADE, related_name='view_entries')
+    excluded_lines = models.CharField(max_length=256, verbose_name=_('Excluded Lines'), blank=True,
+                                      help_text=_('Hide these lines at this stop, semicolon-separated '
+                                                  '(e.g. "3;7") - useful when a line also stops nearby '
+                                                  'and is shown at that other stop instead. Leave blank '
+                                                  'to show every line.'))
+    excluded_destinations = models.CharField(max_length=256, verbose_name=_('Excluded Destinations'), blank=True,
+                                             help_text=_('Hide vehicles with these final destinations at this '
+                                                         'stop, semicolon-separated (e.g. "Btf. Trachenberge") - '
+                                                         'useful for a depot-only run nobody can actually board. '
+                                                         'Leave blank to show every destination.'))
+    walking_minutes = models.PositiveIntegerField(verbose_name=_('Walking Minutes'), default=0,
+                                                  help_text=_('Minutes it takes to walk to this stop. Departures '
+                                                              'leaving sooner than this are hidden, since nobody '
+                                                              'could reach the stop in time. Leave at 0 to show '
+                                                              'every departure.'))
+
+    class Meta:
+        verbose_name = _('DVB View Stop')
+        verbose_name_plural = _('DVB View Stops')
+        constraints = [
+            models.UniqueConstraint(fields=['view', 'stop'], name='dvb_view_stop_unique'),
+        ]
+
+    def __str__(self):
+        return f'{self.stop} @ {self.view}'
+
+    def get_excluded_lines(self) -> list[str]:
+        return _split_filter_list(self.excluded_lines)
+
+    def get_excluded_destinations(self) -> list[str]:
+        return _split_filter_list(self.excluded_destinations)
+
+
+class DVBView(BaseView):
+    template_name = 'core/dvb_view.html'
+    vue_module = 'DVBView'
+    # Departures are fetched live from the VVO API on every request.
+    varies_per_request = True
+    stops = models.ManyToManyField(DVBStop, verbose_name=_('Stops'), blank=True,
+                                   through='DVBViewStop', related_name='dvb_views')
+    departures_per_stop = models.PositiveIntegerField(verbose_name=_('Departures per Stop'),
+                                                      default=DVB_DEPARTURES_PER_STOP,
+                                                      help_text=_('How many upcoming departures to show for each stop.'))
+    refresh_interval = models.PositiveIntegerField(verbose_name=_('Refresh Interval'), default=60,
+                                                   help_text=_('Refresh interval in seconds'))
+
+    class Meta:
+        verbose_name = _('DVB View')
+        verbose_name_plural = _('DVB Views')
+        default_related_name = 'dvb_views'
+        ordering = ["name"]
+
+    def fetch_departures(self) -> list[dict[str, Any]]:
+        """Live departures for every configured stop, each ``{stop_name, departures}``."""
+        results = []
+        now = datetime.datetime.now(tz=datetime.UTC)
+        for entry in self.stop_entries.select_related('stop').all():
+            stop = entry.stop
+            excluded_lines = entry.get_excluded_lines()
+            excluded_destinations = entry.get_excluded_destinations()
+            walking_minutes = entry.walking_minutes
+            stop_name = f'{stop.name} ({walking_minutes}min)' if walking_minutes else stop.name
+            # Over-fetch when filtering by line/destination/walking time: enough departures must
+            # survive the filtering out of the raw, unfiltered list the API returns.
+            fetch_limit = self.departures_per_stop * DVB_FILTER_FETCH_MULTIPLIER \
+                if excluded_lines or excluded_destinations or walking_minutes else self.departures_per_stop
+            try:
+                resp = requests.post(f'{DVB_BASE_URL}/dm', json={
+                    'stopid': stop.stop_id,
+                    'limit': fetch_limit,
+                    'format': 'json',
+                }, timeout=DVB_REQUEST_TIMEOUT)
+                resp.raise_for_status()
+                data = resp.json()
+            except Exception as e:
+                logger.warning('Failed to fetch departures for DVBStop "%s" [%d]: %s', stop, stop.pk, e)
+                results.append({'stop_name': stop_name, 'departures': [], 'error': True})
+                continue
+            departures = []
+            for dep in data.get('Departures') or []:
+                scheduled = dvb_parse_date(dep.get('ScheduledTime'))
+                if scheduled is None:
+                    continue
+                line = dep.get('LineName', '')
+                direction = dep.get('Direction', '')
+                if line in excluded_lines or direction in excluded_destinations:
+                    continue
+                real_time = dvb_parse_date(dep.get('RealTime'))
+                departure_time = real_time or scheduled
+                if (departure_time - now) < datetime.timedelta(minutes=walking_minutes):
+                    continue
+                departures.append({
+                    'line': line,
+                    'direction': direction,
+                    'scheduled': scheduled.isoformat(),
+                    'real_time': real_time.isoformat() if real_time else None,
+                    'state': dep.get('State', ''),
+                    'platform': (dep.get('Platform') or {}).get('Name'),
+                    'mode': dep.get('Mot', ''),
+                })
+                if len(departures) >= self.departures_per_stop:
+                    break
+            results.append({'stop_name': stop_name, 'departures': departures})
+        return results
+
+    def get_context(self) -> dict[str, Any]:
+        return {'dvb_data': {'stops': self.fetch_departures()}}
 
 
 class RandomView(BaseView):
