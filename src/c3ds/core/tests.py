@@ -306,6 +306,39 @@ class MastodonFetchTests(ReloadCaptureMixin, TestCase):
 
         self.assertIsNotNone(MastodonPost.objects.get(pk=self.post.pk).last_fetched)
 
+    def spammy_post(self, post_id, created_at, *, mentions=0, tags=0):
+        return {
+            'id': post_id, 'created_at': created_at, 'content': 'spam',
+            'mentions': [{}] * mentions, 'tags': [{}] * tags,
+        }
+
+    def test_posts_with_too_many_mentions_or_hashtags_are_filtered_out(self):
+        self.post.post_count = 1
+        self.post.save()
+        posts = [
+            self.spammy_post('1', '2026-09-08T12:00:00+00:00', mentions=6),
+            self.spammy_post('2', '2026-09-08T11:00:00+00:00', tags=6),
+            self.spammy_post('3', '2026-09-08T10:00:00+00:00', mentions=5, tags=5),
+        ]
+
+        self.fetch(posts)
+
+        cached_ids = {post['id'] for post in MastodonPost.objects.get(pk=self.post.pk).posts_data}
+        self.assertEqual(cached_ids, {'3'})
+
+    def test_the_pool_shrinks_rather_than_include_spammy_posts(self):
+        self.post.post_count = 2
+        self.post.save()
+        posts = [
+            self.spammy_post('1', '2026-09-08T12:00:00+00:00', mentions=6),
+            self.spammy_post('2', '2026-09-08T11:00:00+00:00', tags=0),
+        ]
+
+        self.fetch(posts)
+
+        cached_ids = {post['id'] for post in MastodonPost.objects.get(pk=self.post.pk).posts_data}
+        self.assertEqual(cached_ids, {'2'})
+
 
 class BuildIdTests(SimpleTestCase):
     """The page carries the build it was rendered from, so a deploy can be told from a blip."""

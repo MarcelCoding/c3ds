@@ -468,6 +468,15 @@ class ScheduleView(BaseView):
         ordering = ["name"]
 
 
+#: A post advertising more mentions or hashtags than this reads as spam/boost-bait and is filtered out.
+MASTODON_MAX_MENTIONS = 5
+MASTODON_MAX_HASHTAGS = 5
+
+#: Fetched per hashtag as a multiple of post_count, so enough posts survive the mention/hashtag
+#: filter to fill the pool.
+MASTODON_FETCH_LIMIT_MULTIPLIER = 2
+
+
 def mastodon_created_at(post: dict[str, Any]) -> datetime.datetime:
     """``created_at`` of a Mastodon API post as an aware datetime; unparseable values sort last."""
     try:
@@ -504,6 +513,12 @@ class MastodonPost(models.Model):
     def get_hashtags(self) -> list[str]:
         return [h.strip() for h in self.hashtags.replace(',', ';').split(';') if h.strip()]
 
+    @staticmethod
+    def _is_spammy(post: dict[str, Any]) -> bool:
+        """Too many @mentions or #hashtags is a sign of boost-bait rather than an on-topic post."""
+        return (len(post.get('mentions') or []) > MASTODON_MAX_MENTIONS
+                or len(post.get('tags') or []) > MASTODON_MAX_HASHTAGS)
+
     def fetch_posts(self, force: bool = False):
         if self.pk is None:
             raise ValueError('Save model first')
@@ -511,7 +526,8 @@ class MastodonPost(models.Model):
         for hashtag in self.get_hashtags():
             url = f'https://c3d2.social/api/v1/timelines/tag/{quote(hashtag)}'
             try:
-                resp = requests.get(url, params={'limit': self.post_count}, timeout=10)
+                resp = requests.get(url, params={'limit': self.post_count * MASTODON_FETCH_LIMIT_MULTIPLIER},
+                                    timeout=10)
                 resp.raise_for_status()
                 posts = resp.json()
             except Exception as e:
@@ -527,7 +543,9 @@ class MastodonPost(models.Model):
         by_id: dict[str, dict[str, Any]] = {}
         for post in fetched:
             by_id.setdefault(post['id'], post)
-        posts = sorted(by_id.values(), key=mastodon_created_at, reverse=True)[:self.post_count]
+        newest_first = sorted(by_id.values(), key=mastodon_created_at, reverse=True)
+        # Spammy posts are never included, even if that leaves the pool smaller than post_count.
+        posts = [post for post in newest_first if not self._is_spammy(post)][:self.post_count]
         if not posts:
             logger.warning('No posts fetched for MastodonPost "%s" [%d], keeping the cached ones', self.name, self.pk)
             return
