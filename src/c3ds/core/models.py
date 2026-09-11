@@ -473,9 +473,13 @@ class ScheduleView(BaseView):
 MASTODON_MAX_MENTIONS = 5
 MASTODON_MAX_HASHTAGS = 5
 
+#: A post this fresh may still be edited/deleted by its author, so it is kept out of the cache
+#: until it clears this age.
+MASTODON_MIN_AGE = datetime.timedelta(minutes=10)
+
 #: Fetched per hashtag as a multiple of post_count, so enough posts survive the mention/hashtag
-#: filter to fill the pool.
-MASTODON_FETCH_LIMIT_MULTIPLIER = 2
+#: and minimum-age filters to fill the pool.
+MASTODON_FETCH_LIMIT_MULTIPLIER = 4
 
 
 def mastodon_created_at(post: dict[str, Any]) -> datetime.datetime:
@@ -496,8 +500,8 @@ class MastodonPost(models.Model):
                                   help_text=_('Cached posts, newest first.'))
     post_count = models.PositiveIntegerField(verbose_name=_('Cached Posts'), default=10,
                                              help_text=_('How many posts to cache and pick from.'))
-    recent_window = models.PositiveIntegerField(verbose_name=_('Recent Window'), default=180,
-                                                help_text=_('A post younger than this is always shown. (seconds)'))
+    recent_window = models.PositiveIntegerField(verbose_name=_('Recent Window'), default=780,
+                                                help_text=_('A post younger than this is shown exclusively. (seconds)'))
     last_fetched = models.DateTimeField(verbose_name=_('Last Fetched'), null=True, blank=True)
     last_changed = models.DateTimeField(verbose_name=_('Last Changed'), auto_now=True)
     created_at = models.DateTimeField(verbose_name=_('Created At'), auto_now_add=True)
@@ -545,8 +549,12 @@ class MastodonPost(models.Model):
         for post in fetched:
             by_id.setdefault(post['id'], post)
         newest_first = sorted(by_id.values(), key=mastodon_created_at, reverse=True)
-        # Spammy posts are never included, even if that leaves the pool smaller than post_count.
-        posts = [post for post in newest_first if not self._is_spammy(post)][:self.post_count]
+        now = datetime.datetime.now(tz=datetime.UTC)
+        # Spammy or too-fresh posts are never included, even if that leaves the pool smaller
+        # than post_count.
+        posts = [post for post in newest_first
+                 if not self._is_spammy(post) and now - mastodon_created_at(post) >= MASTODON_MIN_AGE
+                 ][:self.post_count]
         if not posts:
             logger.warning('No posts fetched for MastodonPost "%s" [%d], keeping the cached ones', self.name, self.pk)
             return
